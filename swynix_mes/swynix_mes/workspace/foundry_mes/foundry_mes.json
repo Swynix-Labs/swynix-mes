@@ -9,6 +9,8 @@
  "image": "/assets/swynix_mes/manufacture.png",
  "idx": 0,
  "label": "Foundry MES",
+ "for_user": "",
+ "is_hidden": 0,
  "links": [
   {
    "hidden": 0,

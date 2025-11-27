@@ -8,6 +8,8 @@
  "icon": "octicon octicon-dashboard",
  "image": "/assets/swynix_mes/manufacture.png",
  "idx": 0,
+ "for_user": "",
+ "is_hidden": 0,
  "label": "MES – Overview",
  "links": [
   {

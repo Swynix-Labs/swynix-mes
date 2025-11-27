@@ -1,11 +1,6 @@
 import frappe
 
 WORKSPACES = (
-	# "swynix_mes",
-	"planning",
-	"operations",
-	"logs",
-	"quality",
 	"mes_overview",
 	"foundry_mes",
 	"caster_mes",
