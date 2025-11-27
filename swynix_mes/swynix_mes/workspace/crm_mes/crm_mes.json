@@ -102,7 +102,7 @@
  "modified": "2025-11-27 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swynix MES",
- "name": "crm_mes",
+ "name": "CRM MES",
  "owner": "Administrator",
  "parent_page": "Swynix MES",
  "public": 1,
@@ -193,6 +193,6 @@
    "type": "DocType"
   }
  ],
- "title": "CRM MES"
+ "title": "CRM"
 }
 

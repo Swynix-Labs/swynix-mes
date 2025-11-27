@@ -132,7 +132,7 @@
  "modified": "2025-11-27 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swynix MES",
- "name": "mes_overview",
+ "name": "MES Overview",
  "owner": "Administrator",
  "parent_page": "Swynix MES",
  "public": 1,
@@ -239,6 +239,6 @@
    "type": "DocType"
   }
  ],
- "title": "MES – Overview"
+ "title": "Overview"
 }
 

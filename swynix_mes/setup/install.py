@@ -1,7 +1,7 @@
 import frappe
 
 WORKSPACES = (
-	"swynix_mes",
+	# "swynix_mes",
 	"planning",
 	"operations",
 	"logs",
