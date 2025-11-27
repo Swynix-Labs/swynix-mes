@@ -82,9 +82,9 @@ add_to_apps_screen = [
 
 # Installation
 # ------------
-
 # before_install = "swynix_mes.install.before_install"
-# after_install = "swynix_mes.install.after_install"
+after_install = "swynix_mes.setup.install.after_install"
+after_migrate = "swynix_mes.setup.install.after_migrate"
 
 # Uninstallation
 # ------------
