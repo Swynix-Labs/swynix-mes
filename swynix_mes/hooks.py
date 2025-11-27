@@ -4,6 +4,7 @@ app_publisher = "Swynix"
 app_description = " Manufacturing Execution System"
 app_email = "syam@swynix.com"
 app_license = "mit"
+app_logo_url = "/assets/swynix_mes/manufacture.png"
 
 # Apps
 # ------------------
@@ -13,8 +14,8 @@ app_license = "mit"
 add_to_apps_screen = [
 	{
 		"name": "swynix_mes",
+		"logo": "/assets/swynix_mes/manufacture.png",
 		"title": "Swynix MES",
-		"icon": "fa fa-industry",
 		"route": "/app/swynix-mes",
 		"description": "Manufacturing Execution System",
 		"category": "Manufacturing",

@@ -1,0 +1,82 @@
+{
+ "charts": [],
+ "content": "[]",
+ "creation": "2025-11-27 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "octicon octicon-calendar",
+ "image": "/assets/swynix_mes/manufacture.png",
+ "idx": 0,
+ "label": "MES Planning",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rolling Plan",
+   "link_count": 0,
+   "link_to": "Rolling Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rolling Plan Pass",
+   "link_count": 0,
+   "link_to": "Rolling Plan Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recipe Master",
+   "link_count": 0,
+   "link_to": "Recipe Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recipe Detail",
+   "link_count": 0,
+   "link_to": "Recipe Detail",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-11-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "MES Planning",
+ "owner": "Administrator",
+ "parent_page": "Swynix MES",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 31.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Rolling Plan",
+   "link_to": "Rolling Plan",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Recipe Master",
+   "link_to": "Recipe Master",
+   "type": "DocType"
+  }
+ ],
+ "title": "Planning"
+}
+
