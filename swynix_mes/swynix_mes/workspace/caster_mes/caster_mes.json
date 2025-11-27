@@ -1,0 +1,193 @@
+{
+ "charts": [],
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Casting Operation\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Coil\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Caster QC Inspection\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Scrap Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Breakdown Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Parameter Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Energy Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Quick Lists</b></span>\",\"col\":12}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Latest Cast Coils\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Scrap – Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Breakdowns\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Caster QC Pending\",\"col\":6}}]",
+ "creation": "2025-11-27 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "octicon octicon-zap",
+ "image": "/assets/swynix_mes/manufacture.png",
+ "idx": 0,
+ "label": "Caster MES",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Caster Operations",
+   "link_count": 8,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Casting Operation",
+   "link_count": 0,
+   "link_to": "Casting Operation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Coil",
+   "link_count": 0,
+   "link_to": "Coil",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Caster QC Inspection",
+   "link_count": 0,
+   "link_to": "Caster QC Inspection",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scrap Log",
+   "link_count": 0,
+   "link_to": "Scrap Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Breakdown Log",
+   "link_count": 0,
+   "link_to": "Breakdown Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Parameter Log",
+   "link_count": 0,
+   "link_to": "Parameter Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Energy Log",
+   "link_count": 0,
+   "link_to": "Energy Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "QC Log",
+   "link_count": 0,
+   "link_to": "QC Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-11-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "caster_mes",
+ "owner": "Administrator",
+ "parent_page": "Swynix MES",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Coil",
+   "label": "Latest Cast Coils",
+   "quick_list_filter": "{\"source_process\":[\"=\",\"Caster\"]}"
+  },
+  {
+   "document_type": "Scrap Log",
+   "label": "Scrap – Today",
+   "quick_list_filter": "{\"department\":[\"=\",\"Caster\"],\"logged_on\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Breakdown Log",
+   "label": "Breakdowns",
+   "quick_list_filter": "{\"department\":[\"=\",\"Caster\"],\"status\":[\"!=\",\"Closed\"]}"
+  },
+  {
+   "document_type": "Caster QC Inspection",
+   "label": "Caster QC Pending",
+   "quick_list_filter": "{}"
+  }
+ ],
+ "roles": [],
+ "sequence_id": 37.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Casting Operation",
+   "link_to": "Casting Operation",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Coil",
+   "link_to": "Coil",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Caster QC Inspection",
+   "link_to": "Caster QC Inspection",
+   "type": "DocType"
+  },
+  {
+   "color": "Purple",
+   "doc_view": "List",
+   "label": "Scrap Log",
+   "link_to": "Scrap Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Breakdown Log",
+   "link_to": "Breakdown Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Parameter Log",
+   "link_to": "Parameter Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Energy Log",
+   "link_to": "Energy Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "QC Log",
+   "link_to": "QC Log",
+   "type": "DocType"
+  }
+ ],
+ "title": "Caster MES"
+}
+

@@ -6,6 +6,12 @@ WORKSPACES = (
 	"operations",
 	"logs",
 	"quality",
+	"mes_overview",
+	"foundry_mes",
+	"caster_mes",
+	"crm_mes",
+	"foil_reel_mes",
+	"finishing_circle_mes",
 )
 
 

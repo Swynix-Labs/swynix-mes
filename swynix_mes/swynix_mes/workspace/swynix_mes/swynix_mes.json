@@ -1,11 +1,11 @@
 {
  "charts": [],
- "content": "[]",
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters & Operations</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Quality\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Logistics & Tracking\",\"col\":4}}]",
  "creation": "2025-11-27 00:00:00.000000",
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,
- "icon": "octicon octicon-gear",
+ "icon": "manufacturing",
  "image": "/assets/swynix_mes/manufacture.png",
  "idx": 0,
  "label": "Swynix MES",
@@ -343,24 +343,45 @@
    "type": "DocType"
   },
   {
-   "color": "Blue",
+   "color": "Green",
    "doc_view": "List",
    "label": "Melting Batch",
    "link_to": "Melting Batch",
    "type": "DocType"
   },
   {
-   "color": "Blue",
+   "color": "Orange",
    "doc_view": "List",
    "label": "QC Log",
    "link_to": "QC Log",
    "type": "DocType"
   },
   {
-   "color": "Blue",
+   "color": "Purple",
    "doc_view": "List",
    "label": "WIP Movement Log",
    "link_to": "WIP Movement Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Casting Operation",
+   "link_to": "Casting Operation",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Coil Operation",
+   "link_to": "Coil Operation",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Recipe Master",
+   "link_to": "Recipe Master",
    "type": "DocType"
   }
  ],

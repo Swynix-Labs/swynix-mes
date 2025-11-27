@@ -1,0 +1,254 @@
+{
+ "charts": [],
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finishing Production Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Operation Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Slitting Operation Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Circle Production Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Circle Packing Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Packing Batch\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Scrap Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Annealing Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Breakdown Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Quick Lists</b></span>\",\"col\":12}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Coils at Finishing\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Circle Production – Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Packing Batches – Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Finishing Scrap – Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Circle Scrap – Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Finishing Breakdowns\",\"col\":6}}]",
+ "creation": "2025-11-27 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "octicon octicon-checklist",
+ "image": "/assets/swynix_mes/manufacture.png",
+ "idx": 0,
+ "label": "Finishing & Circle MES",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Operations",
+   "link_count": 11,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Production Log",
+   "link_count": 0,
+   "link_to": "Finishing Production Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cutting Operation Log",
+   "link_count": 0,
+   "link_to": "Cutting Operation Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Slitting Operation Log",
+   "link_count": 0,
+   "link_to": "Slitting Operation Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Circle Production Log",
+   "link_count": 0,
+   "link_to": "Circle Production Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Circle Packing Log",
+   "link_count": 0,
+   "link_to": "Circle Packing Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Packing Batch",
+   "link_count": 0,
+   "link_to": "Packing Batch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scrap Log",
+   "link_count": 0,
+   "link_to": "Scrap Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "QC Log",
+   "link_count": 0,
+   "link_to": "QC Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Annealing Log",
+   "link_count": 0,
+   "link_to": "Annealing Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Breakdown Log",
+   "link_count": 0,
+   "link_to": "Breakdown Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "WIP Movement Log",
+   "link_count": 0,
+   "link_to": "WIP Movement Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-11-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "finishing_circle_mes",
+ "owner": "Administrator",
+ "parent_page": "Swynix MES",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Coil",
+   "label": "Coils at Finishing",
+   "quick_list_filter": "{\"current_stage\":[\"=\",\"Finishing\"]}"
+  },
+  {
+   "document_type": "Circle Production Log",
+   "label": "Circle Production – Today",
+   "quick_list_filter": "{\"creation\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Packing Batch",
+   "label": "Packing Batches – Today",
+   "quick_list_filter": "{\"packing_date\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Scrap Log",
+   "label": "Finishing Scrap – Today",
+   "quick_list_filter": "{\"department\":[\"=\",\"Finishing\"],\"logged_on\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Scrap Log",
+   "label": "Circle Scrap – Today",
+   "quick_list_filter": "{\"department\":[\"=\",\"Circle\"],\"logged_on\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Breakdown Log",
+   "label": "Finishing Breakdowns",
+   "quick_list_filter": "{\"department\":[\"in\",[\"Finishing\",\"Circle\"]],\"status\":[\"!=\",\"Closed\"]}"
+  }
+ ],
+ "roles": [],
+ "sequence_id": 40.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Finishing Production Log",
+   "link_to": "Finishing Production Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Cutting Operation Log",
+   "link_to": "Cutting Operation Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Slitting Operation Log",
+   "link_to": "Slitting Operation Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Purple",
+   "doc_view": "List",
+   "label": "Circle Production Log",
+   "link_to": "Circle Production Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Circle Packing Log",
+   "link_to": "Circle Packing Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Packing Batch",
+   "link_to": "Packing Batch",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Scrap Log",
+   "link_to": "Scrap Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "QC Log",
+   "link_to": "QC Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Annealing Log",
+   "link_to": "Annealing Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Breakdown Log",
+   "link_to": "Breakdown Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "WIP Movement Log",
+   "link_to": "WIP Movement Log",
+   "type": "DocType"
+  }
+ ],
+ "title": "Finishing & Circle MES"
+}
+

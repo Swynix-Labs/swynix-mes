@@ -1,0 +1,244 @@
+{
+ "charts": [],
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Coil\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reel\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Packing Batch\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Annealing Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finishing Production Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Breakdown Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Scrap Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Energy Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Quick Lists</b></span>\",\"col\":12}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Coils In Process\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Open Breakdowns\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Scrap Today\",\"col\":6}},{\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Energy Today\",\"col\":6}}]",
+ "creation": "2025-11-27 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "octicon octicon-dashboard",
+ "image": "/assets/swynix_mes/manufacture.png",
+ "idx": 0,
+ "label": "MES – Overview",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Core Documents",
+   "link_count": 11,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Coil",
+   "link_count": 0,
+   "link_to": "Coil",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reel",
+   "link_count": 0,
+   "link_to": "Reel",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Packing Batch",
+   "link_count": 0,
+   "link_to": "Packing Batch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Melting Batch",
+   "link_count": 0,
+   "link_to": "Melting Batch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rolling Plan",
+   "link_count": 0,
+   "link_to": "Rolling Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Annealing Log",
+   "link_count": 0,
+   "link_to": "Annealing Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Production Log",
+   "link_count": 0,
+   "link_to": "Finishing Production Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Breakdown Log",
+   "link_count": 0,
+   "link_to": "Breakdown Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scrap Log",
+   "link_count": 0,
+   "link_to": "Scrap Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Energy Log",
+   "link_count": 0,
+   "link_to": "Energy Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "QC Log",
+   "link_count": 0,
+   "link_to": "QC Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-11-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "mes_overview",
+ "owner": "Administrator",
+ "parent_page": "Swynix MES",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Coil",
+   "label": "Coils In Process",
+   "quick_list_filter": "{\"status\":[\"=\",\"In Process\"]}"
+  },
+  {
+   "document_type": "Breakdown Log",
+   "label": "Open Breakdowns",
+   "quick_list_filter": "{\"status\":[\"in\",[\"Open\",\"In Progress\"]]}"
+  },
+  {
+   "document_type": "Scrap Log",
+   "label": "Scrap Today",
+   "quick_list_filter": "{\"logged_on\":[\"Timespan\",\"today\"]}"
+  },
+  {
+   "document_type": "Energy Log",
+   "label": "Energy Today",
+   "quick_list_filter": "{\"from_time\":[\">=\",\"today\"]}"
+  }
+ ],
+ "roles": [],
+ "sequence_id": 35.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Coil",
+   "link_to": "Coil",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Reel",
+   "link_to": "Reel",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Packing Batch",
+   "link_to": "Packing Batch",
+   "type": "DocType"
+  },
+  {
+   "color": "Purple",
+   "doc_view": "List",
+   "label": "Melting Batch",
+   "link_to": "Melting Batch",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Rolling Plan",
+   "link_to": "Rolling Plan",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Annealing Log",
+   "link_to": "Annealing Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Finishing Production Log",
+   "link_to": "Finishing Production Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Breakdown Log",
+   "link_to": "Breakdown Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Scrap Log",
+   "link_to": "Scrap Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Energy Log",
+   "link_to": "Energy Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "QC Log",
+   "link_to": "QC Log",
+   "type": "DocType"
+  }
+ ],
+ "title": "MES – Overview"
+}
+
