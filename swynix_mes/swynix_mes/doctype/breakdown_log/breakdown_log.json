@@ -1,0 +1,157 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 01:03:46.544296",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "classification_section",
+  "category",
+  "coil",
+  "reason",
+  "machine_and_department_section",
+  "department",
+  "machine_name",
+  "workstation",
+  "responsibility_and_status_section",
+  "attended_by",
+  "remarks",
+  "reported_by",
+  "status",
+  "timing_section",
+  "breakdown_end",
+  "breakdown_start",
+  "duration_minutes"
+ ],
+ "fields": [
+  {
+   "fieldname": "classification_section",
+   "fieldtype": "Section Break",
+   "label": "Classification"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Mechanical\nElectrical\nUtility\nPlanning\nQuality Hold\nChangeover\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "label": "Coil",
+   "options": "Coil"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "reqd": 1
+  },
+  {
+   "fieldname": "machine_and_department_section",
+   "fieldtype": "Section Break",
+   "label": "Machine and Department"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Department",
+   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle",
+   "reqd": 1
+  },
+  {
+   "fieldname": "machine_name",
+   "fieldtype": "Data",
+   "label": "Machine Name"
+  },
+  {
+   "fieldname": "workstation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Workstation",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "responsibility_and_status_section",
+   "fieldtype": "Section Break",
+   "label": "Responsibility and Status"
+  },
+  {
+   "fieldname": "attended_by",
+   "fieldtype": "Data",
+   "label": "Attended By"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "reported_by",
+   "fieldtype": "Link",
+   "label": "Reported By",
+   "options": "User"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Open\nIn Progress\nClosed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "breakdown_end",
+   "fieldtype": "Datetime",
+   "label": "Breakdown End"
+  },
+  {
+   "fieldname": "breakdown_start",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Breakdown Start",
+   "reqd": 1
+  },
+  {
+   "fieldname": "duration_minutes",
+   "fieldtype": "Float",
+   "label": "Duration (Minutes)"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 01:38:44.888773",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Breakdown Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

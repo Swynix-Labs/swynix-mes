@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 02:18:28.812576",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_87ge",
+  "batch_id",
+  "furnace_no",
+  "heat_number",
+  "recipe",
+  "amended_from",
+  "parameters_section",
+  "additives_used",
+  "holding_temperature",
+  "melting_temperature",
+  "slag_removal_done",
+  "raw_material_inputs_section",
+  "raw_material_inputs",
+  "timing_section",
+  "melt_end_time",
+  "melt_start_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_87ge",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "batch_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Batch ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "furnace_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Furnace No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "heat_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Heat Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recipe",
+   "fieldtype": "Link",
+   "label": "Recipe",
+   "options": "Recipe Master"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Melting Batch",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Parameters"
+  },
+  {
+   "fieldname": "additives_used",
+   "fieldtype": "Small Text",
+   "label": "Additives Used"
+  },
+  {
+   "fieldname": "holding_temperature",
+   "fieldtype": "Float",
+   "label": "Holding Temperature"
+  },
+  {
+   "fieldname": "melting_temperature",
+   "fieldtype": "Float",
+   "label": "Melting Temperature"
+  },
+  {
+   "default": "0",
+   "fieldname": "slag_removal_done",
+   "fieldtype": "Check",
+   "label": "Slag Removal Done"
+  },
+  {
+   "fieldname": "raw_material_inputs_section",
+   "fieldtype": "Section Break",
+   "label": "Raw Material Inputs"
+  },
+  {
+   "fieldname": "raw_material_inputs",
+   "fieldtype": "Table",
+   "label": "Raw Material Inputs",
+   "options": "Melting Batch Material"
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "melt_end_time",
+   "fieldtype": "Datetime",
+   "label": "Melt End Time"
+  },
+  {
+   "fieldname": "melt_start_time",
+   "fieldtype": "Datetime",
+   "label": "Melt Start Time",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-11-27 06:52:31.190876",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Batch",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

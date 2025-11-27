@@ -1,0 +1,149 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 07:28:41.245104",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "context_section",
+  "coil",
+  "process_stage",
+  "sample_point",
+  "disposition_section",
+  "disposition",
+  "inspection_date",
+  "inspector",
+  "remarks",
+  "result_section",
+  "defect_photo",
+  "result_unit",
+  "result_value",
+  "spec_max",
+  "spec_min",
+  "test_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Coil",
+   "options": "Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "process_stage",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Process Stage",
+   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sample_point",
+   "fieldtype": "Data",
+   "label": "Sample Point"
+  },
+  {
+   "fieldname": "disposition_section",
+   "fieldtype": "Section Break",
+   "label": "Disposition"
+  },
+  {
+   "fieldname": "disposition",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Disposition",
+   "options": "Pass\nHold\nReject\nRework",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Inspection Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspector",
+   "fieldtype": "Link",
+   "label": "Inspector",
+   "options": "User"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "defect_photo",
+   "fieldtype": "Attach Image",
+   "label": "Defect Photo"
+  },
+  {
+   "fieldname": "result_unit",
+   "fieldtype": "Data",
+   "label": "Result Unit"
+  },
+  {
+   "fieldname": "result_value",
+   "fieldtype": "Float",
+   "label": "Result Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "spec_max",
+   "fieldtype": "Float",
+   "label": "Spec Max"
+  },
+  {
+   "fieldname": "spec_min",
+   "fieldtype": "Float",
+   "label": "Spec Min"
+  },
+  {
+   "fieldname": "test_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Test Type",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 07:39:15.243468",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "QC Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

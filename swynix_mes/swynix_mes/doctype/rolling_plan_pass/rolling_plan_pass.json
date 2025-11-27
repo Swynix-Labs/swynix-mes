@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 08:18:00.971800",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "main_section",
+  "pass_number",
+  "planned_entry_thickness",
+  "planned_exit_thickness",
+  "planned_speed",
+  "planned_tension",
+  "work_instruction"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_section",
+   "fieldtype": "Section Break",
+   "label": "Main"
+  },
+  {
+   "fieldname": "pass_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Pass Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "planned_entry_thickness",
+   "fieldtype": "Float",
+   "label": "Planned Entry Thickness"
+  },
+  {
+   "fieldname": "planned_exit_thickness",
+   "fieldtype": "Float",
+   "label": "Planned Exit Thickness"
+  },
+  {
+   "fieldname": "planned_speed",
+   "fieldtype": "Float",
+   "label": "Planned Speed"
+  },
+  {
+   "fieldname": "planned_tension",
+   "fieldtype": "Float",
+   "label": "Planned Tension"
+  },
+  {
+   "fieldname": "work_instruction",
+   "fieldtype": "Small Text",
+   "label": "Work Instruction"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-27 08:31:41.382705",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Rolling Plan Pass",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

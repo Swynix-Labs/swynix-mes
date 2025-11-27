@@ -1,0 +1,169 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-26 23:56:30.090125",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "context_section",
+  "coil_or_pallet",
+  "department",
+  "energy_and_calorific_section",
+  "gross_calorific_value",
+  "header_section",
+  "annealing_id",
+  "furnace_no",
+  "meta_section",
+  "operator",
+  "remarks",
+  "shift",
+  "specifications_section",
+  "annealing_temperature",
+  "post_anneal_qr",
+  "pre_anneal_qr",
+  "soaking_time",
+  "timing_section",
+  "end_time",
+  "start_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "coil_or_pallet",
+   "fieldtype": "Data",
+   "label": "Coil / Pallet Ref",
+   "reqd": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Department",
+   "options": "Foil\nFinishing\nCircle",
+   "reqd": 1
+  },
+  {
+   "fieldname": "energy_and_calorific_section",
+   "fieldtype": "Section Break",
+   "label": "Energy and Calorific"
+  },
+  {
+   "fieldname": "gross_calorific_value",
+   "fieldtype": "Float",
+   "label": "Gross Calorific Value"
+  },
+  {
+   "fieldname": "header_section",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "annealing_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Annealing ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "furnace_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Furnace No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Meta"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "specifications_section",
+   "fieldtype": "Section Break",
+   "label": "Specifications"
+  },
+  {
+   "fieldname": "annealing_temperature",
+   "fieldtype": "Float",
+   "label": "Annealing Temperature (\u00b0C)"
+  },
+  {
+   "fieldname": "post_anneal_qr",
+   "fieldtype": "Data",
+   "label": "Post-Annealing Spec QR"
+  },
+  {
+   "fieldname": "pre_anneal_qr",
+   "fieldtype": "Data",
+   "label": "Pre-Annealing Spec QR"
+  },
+  {
+   "fieldname": "soaking_time",
+   "fieldtype": "Float",
+   "label": "Soaking Time (Minutes)"
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "End Time"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Date",
+   "label": "Start Time",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 00:23:09.066614",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Annealing Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

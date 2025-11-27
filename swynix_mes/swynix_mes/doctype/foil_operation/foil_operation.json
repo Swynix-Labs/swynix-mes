@@ -1,0 +1,124 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 05:05:05.626334",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "header_section",
+  "coil",
+  "foil_operation_id",
+  "notes_section",
+  "remarks",
+  "pass_data_section",
+  "entry_thickness",
+  "exit_thickness",
+  "flatness_rating",
+  "oil_temperature",
+  "pass_number",
+  "pinhole_count",
+  "rolling_speed"
+ ],
+ "fields": [
+  {
+   "fieldname": "header_section",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Coil",
+   "options": "Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "foil_operation_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Foil Operation ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "pass_data_section",
+   "fieldtype": "Section Break",
+   "label": "Pass Data"
+  },
+  {
+   "fieldname": "entry_thickness",
+   "fieldtype": "Float",
+   "label": "Entry Thickness"
+  },
+  {
+   "fieldname": "exit_thickness",
+   "fieldtype": "Float",
+   "label": "Exit Thickness"
+  },
+  {
+   "fieldname": "flatness_rating",
+   "fieldtype": "Select",
+   "label": "Flatness Rating",
+   "options": "OK\nSlight\nBad"
+  },
+  {
+   "fieldname": "oil_temperature",
+   "fieldtype": "Float",
+   "label": "Oil Temperature"
+  },
+  {
+   "fieldname": "pass_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Pass Number"
+  },
+  {
+   "fieldname": "pinhole_count",
+   "fieldtype": "Int",
+   "label": "Pinhole Count"
+  },
+  {
+   "fieldname": "rolling_speed",
+   "fieldtype": "Float",
+   "label": "Rolling Speed"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 06:12:17.455551",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Foil Operation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

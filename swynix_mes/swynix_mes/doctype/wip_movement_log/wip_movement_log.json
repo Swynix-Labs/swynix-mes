@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 08:32:40.148833",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "context_section",
+  "coil",
+  "meta_section",
+  "moved_by",
+  "remarks",
+  "movement_section",
+  "from_stage",
+  "from_warehouse",
+  "to_stage",
+  "to_warehouse",
+  "timing_and_type_section",
+  "movement_time",
+  "movement_type",
+  "shift",
+  "work_order"
+ ],
+ "fields": [
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Coil",
+   "options": "Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Meta"
+  },
+  {
+   "fieldname": "moved_by",
+   "fieldtype": "Link",
+   "label": "Moved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "movement_section",
+   "fieldtype": "Section Break",
+   "label": "Movement"
+  },
+  {
+   "fieldname": "from_stage",
+   "fieldtype": "Select",
+   "label": "From Stage",
+   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle"
+  },
+  {
+   "fieldname": "from_warehouse",
+   "fieldtype": "Link",
+   "label": "From Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "to_stage",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "To Stage",
+   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_warehouse",
+   "fieldtype": "Link",
+   "label": "To Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "timing_and_type_section",
+   "fieldtype": "Section Break",
+   "label": "Timing and Type"
+  },
+  {
+   "fieldname": "movement_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Movement Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "movement_type",
+   "fieldtype": "Select",
+   "label": "Movement Type",
+   "options": "Planned\nActual\nRework\nReturn\nRejection"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 09:12:17.334567",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "WIP Movement Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 08:18:35.852513",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_o4or",
+  "coil",
+  "rolling_plan_id",
+  "planned_passes_section",
+  "planned_passes",
+  "specs_section",
+  "customer_specs",
+  "pass_count",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_o4or",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Coil",
+   "options": "Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rolling_plan_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Rolling Plan ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "planned_passes_section",
+   "fieldtype": "Section Break",
+   "label": "Planned Passes"
+  },
+  {
+   "fieldname": "planned_passes",
+   "fieldtype": "Table",
+   "label": "Planned Passes",
+   "options": "Rolling Plan Pass"
+  },
+  {
+   "fieldname": "specs_section",
+   "fieldtype": "Section Break",
+   "label": "Specs"
+  },
+  {
+   "fieldname": "customer_specs",
+   "fieldtype": "Small Text",
+   "label": "Customer Specs"
+  },
+  {
+   "fieldname": "pass_count",
+   "fieldtype": "Int",
+   "label": "Pass Count"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Rolling Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-11-27 08:24:24.993453",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Rolling Plan",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
