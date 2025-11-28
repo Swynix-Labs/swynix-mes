@@ -1,63 +1,18 @@
 {
  "charts": [],
- "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>MES Workspaces</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"MES Overview\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Foundry MES\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Caster MES\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"CRM MES\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Foil & Reel MES\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Finishing & Circle MES\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters & Operations</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Quality\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Logistics & Tracking\",\"col\":4}}]",
- "creation": "2025-11-27 00:00:00.000000",
+ "content": "[{\"id\":\"MwsxBWnUBn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"id\":\"Gk66vqlTis\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"id\":\"MclDJYaasC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"id\":\"rGI8hLLthV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"v3iCsHuWP2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters &amp; Operations</b></span>\",\"col\":12}},{\"id\":\"c8Ww0CqrZQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"id\":\"AuhbrYUJjm\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"t2AnsJAWaB\",\"type\":\"card\",\"data\":{\"card_name\":\"Quality\",\"col\":4}},{\"id\":\"qJS8asqe5M\",\"type\":\"card\",\"data\":{\"card_name\":\"Logistics & Tracking\",\"col\":4}}]",
+ "creation": "2025-11-27 00:00:00",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
+ "for_user": "",
  "hide_custom": 0,
- "icon": "manufacturing",
- "image": "/assets/swynix_mes/manufacture.png",
+ "icon": "image-view",
  "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
  "label": "Swynix MES",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Planning",
-   "link_count": 4,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Rolling Plan",
-   "link_count": 0,
-   "link_to": "Rolling Plan",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Rolling Plan Pass",
-   "link_count": 0,
-   "link_to": "Rolling Plan Pass",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Recipe Master",
-   "link_count": 0,
-   "link_to": "Recipe Master",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Recipe Detail",
-   "link_count": 0,
-   "link_to": "Recipe Detail",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -81,7 +36,7 @@
    "is_query_report": 0,
    "label": "Melting Batch Material",
    "link_count": 0,
-   "link_to": "Melting Batch Material",
+   "link_to": "Planned Raw Material",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -321,12 +276,82 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rolling Plan",
+   "link_count": 0,
+   "link_to": "Rolling Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rolling Plan Pass",
+   "link_count": 0,
+   "link_to": "Rolling Plan Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recipe Master",
+   "link_count": 0,
+   "link_to": "Recipe Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recipe Detail",
+   "link_count": 0,
+   "link_to": "Recipe Detail",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift Master",
+   "link_count": 0,
+   "link_to": "Shift Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Melting Plan",
+   "link_count": 0,
+   "link_to": "Melting Batch Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-11-27 00:00:00.000000",
+ "modified": "2025-11-28 23:11:13.588443",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Swynix MES",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -362,29 +387,7 @@
    "label": "WIP Movement Log",
    "link_to": "WIP Movement Log",
    "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Casting Operation",
-   "link_to": "Casting Operation",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Coil Operation",
-   "link_to": "Coil Operation",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Recipe Master",
-   "link_to": "Recipe Master",
-   "type": "DocType"
   }
  ],
  "title": "Swynix MES"
 }
-

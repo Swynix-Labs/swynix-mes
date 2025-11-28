@@ -1,0 +1,148 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-28 18:51:29.455928",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_4zhe",
+  "plan_date",
+  "shift",
+  "furnace",
+  "alloy_grade",
+  "recipe",
+  "column_break_ibkk",
+  "planned_melt_weight",
+  "target_coils",
+  "customer",
+  "sales_order",
+  "remarks",
+  "tab_2_tab",
+  "planned_materials",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_4zhe",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "plan_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Plan Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shift",
+   "options": "Shift Master",
+   "reqd": 1
+  },
+  {
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "label": "Furnace",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "alloy_grade",
+   "fieldtype": "Data",
+   "label": "Alloy Grade",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recipe",
+   "fieldtype": "Link",
+   "label": "Recipe",
+   "options": "Recipe Master",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ibkk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_melt_weight",
+   "fieldtype": "Float",
+   "label": "Planned Melt Weight (kg)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_coils",
+   "fieldtype": "Int",
+   "label": "Target Coils"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "tab_2_tab",
+   "fieldtype": "Tab Break",
+   "label": "Raw Materials"
+  },
+  {
+   "fieldname": "planned_materials",
+   "fieldtype": "Table",
+   "label": "Planned Materials",
+   "options": "Planned Raw Material"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Melting Batch Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-11-28 19:49:58.797022",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Batch Plan",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
