@@ -1,0 +1,839 @@
+coil-Auto fill
+
+frappe.ui.form.on('Coil', {
+    refresh(frm) {
+
+        // Start QC Button
+        if (!frm.is_new() && frm.doc.qc_status === "Pending") {
+            frm.add_custom_button(__('Start QC'), () => {
+                frappe.route_options = {
+                    reference_type: 'Coil',
+                    reference_name: frm.doc.name,
+                    inspection_type: 'Final',
+                    quality_inspection_template: 'Coil - Final QC'
+                };
+                frappe.new_doc('Quality Inspection');
+            }, __('Quality'));
+        }
+
+        // Open QC
+        if (frm.doc.quality_inspection) {
+            frm.add_custom_button(__('Open Inspection'), () => {
+                frappe.set_route('Form', 'Quality Inspection', frm.doc.quality_inspection);
+            }, __('Quality'));
+        }
+
+        // Print Label
+        frm.add_custom_button(__('Print Label'), () => {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Print Format",
+                    name: "Coil Label"
+                },
+                callback() {
+                    frappe.set_route("print", "Coil", frm.doc.name, "Coil Label");
+                }
+            })
+        }, __('Actions'));
+
+        // Mark Consumed
+        if (!frm.doc.is_consumed) {
+            frm.add_custom_button(__('Mark Consumed'), () => {
+                frm.set_value("is_consumed", 1);
+                frm.save();
+            }, __('Actions'));
+        }
+
+        // Create Slitting Batch
+        frm.add_custom_button(__('Create Slitting Batch'), () => {
+            frappe.route_options = { coil: frm.doc.name };
+            frappe.new_doc('Slitting Batch');
+        }, __('Next Operations'));
+    },
+
+    // Autofill Data from Casting Operation
+    casting_operation(frm) {
+        if (frm.doc.casting_operation) {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Casting Operation",
+                    name: frm.doc.casting_operation
+                },
+                callback(r) {
+                    if (!r.message) return;
+                    let op = r.message;
+
+                    frm.set_value("melting_batch", op.melting_batch);
+                    frm.set_value("alloy_grade", op.alloy_grade);
+                    frm.set_value("shift", op.shift);
+                    frm.set_value("furnace", op.furnace);
+                    frm.set_value("produced_on", op.end_time);
+                }
+            });
+        }
+    }
+});
+
+
+Melting batch plan-planned materials
+frappe.ui.form.on('Melting Batch Plan', {
+    refresh: function(frm) {
+        // Add "Fetch Materials" button
+        if (frm.doc.recipe) {
+            frm.add_custom_button(__('Fetch Materials'), function() {
+                fetch_recipe_materials(frm);
+            });
+        }
+    },
+    
+    recipe: function(frm) {
+        // Also show button when recipe is selected
+        if (frm.doc.recipe) {
+            frm.add_custom_button(__('Fetch Materials'), function() {
+                fetch_recipe_materials(frm);
+            });
+        }
+    },
+    
+    planned_melt_weight: function(frm) {
+        // Recalculate planned quantities when planned melt weight changes
+        calculate_planned_quantities(frm);
+    }
+});
+
+// Handle child table changes
+frappe.ui.form.on('Melting Batch Plan Compositions', {
+    planned_percent_or_ratio: function(frm, cdt, cdn) {
+        // Recalculate when ratio changes
+        calculate_planned_quantities(frm);
+    }
+});
+
+function fetch_recipe_materials(frm) {
+    if (!frm.doc.recipe) {
+        frappe.msgprint(__('Please select a Recipe first'));
+        return;
+    }
+    
+    // Show loading indicator
+    frappe.show_alert({
+        message: __('Fetching materials...'),
+        indicator: 'blue'
+    }, 3);
+    
+    // Call server-side method
+    frappe.call({
+        method: 'swynix_mes.fetch_recipe_materials',
+        args: {
+            recipe_name: frm.doc.recipe
+        },
+        callback: function(r) {
+            if (r.message && r.message.success) {
+                // Clear existing compositions
+                frm.clear_table('compositions');
+                
+                // Add each material to compositions
+                r.message.materials.forEach(function(material) {
+                    let row = frm.add_child('compositions');
+                    row.item = material.item;
+                    row.source_type = material.source_type;
+                    row.planned_percent_or_ratio = material.planned_percent_or_ratio;
+                    row.planned_qty = material.planned_qty;
+                });
+                
+                // Refresh and calculate
+                frm.refresh_field('compositions');
+                calculate_planned_quantities(frm);
+                
+                frappe.show_alert({
+                    message: r.message.message,
+                    indicator: 'green'
+                }, 5);
+            } else {
+                frappe.msgprint({
+                    title: __('Error'),
+                    message: r.message ? r.message.message : __('Failed to fetch materials'),
+                    indicator: 'red'
+                });
+            }
+        },
+        error: function(err) {
+            frappe.msgprint({
+                title: __('Error'),
+                message: __('Failed to fetch recipe materials. Check console for details.'),
+                indicator: 'red'
+            });
+            console.error('Error:', err);
+        }
+    });
+}
+
+function calculate_planned_quantities(frm) {
+    if (!frm.doc.planned_melt_weight || frm.doc.planned_melt_weight <= 0) {
+        return;
+    }
+    
+    let total_ratio = 0;
+    
+    // Calculate total ratio/percentage
+    frm.doc.compositions.forEach(function(row) {
+        if (row.planned_percent_or_ratio) {
+            total_ratio += flt(row.planned_percent_or_ratio);
+        }
+    });
+    
+    if (total_ratio === 0) {
+        return;
+    }
+    
+    // Calculate planned quantity for each row
+    frm.doc.compositions.forEach(function(row) {
+        if (row.planned_percent_or_ratio) {
+            // Formula: (Ratio / Total Ratio) * Planned Melt Weight
+            let ratio_fraction = flt(row.planned_percent_or_ratio) / total_ratio;
+            row.planned_qty = flt(ratio_fraction * flt(frm.doc.planned_melt_weight), 3);
+        }
+    });
+    
+    frm.refresh_field('compositions');
+    
+    frappe.show_alert({
+        message: __('Planned quantities calculated'),
+        indicator: 'blue'
+    }, 3);
+}
+
+
+Casting Operation - Buttons
+// Client Script: Further operations from Casting Operation
+// Doctype: Casting Operation
+
+frappe.ui.form.on('Casting Operation', {
+    refresh(frm) {
+        // Only after save + submit we allow further actions
+        if (!frm.is_new() && frm.doc.docstatus === 1) {
+            // Group name "Further Operations" just for UI grouping
+            frm.add_custom_button(__('Create Coils'), () => {
+                make_coils_from_cast(frm);
+            }, __('Further Operations'));
+
+            frm.add_custom_button(__('Create Dross Log'), () => {
+                make_dross_log_from_cast(frm);
+            }, __('Further Operations'));
+
+            frm.add_custom_button(__('Create Energy Log'), () => {
+                make_energy_log_from_cast(frm);
+            }, __('Further Operations'));
+        }
+    }
+});
+
+/**
+ * Create Coil doc pre-filled from Casting Operation
+ * (user will duplicate / create as many coils as needed)
+ */
+function make_coils_from_cast(frm) {
+    if (!frm.doc.total_cast_weight) {
+        frappe.msgprint(__('Please enter Total Cast Weight (kg) before creating coils.'));
+        return;
+    }
+
+    // Default per-coil weight suggestion (can be edited in the Coil form)
+    let no_of_coils = frm.doc.no_of_coils || 1;
+    let per_coil_weight = frm.doc.total_cast_weight / no_of_coils;
+
+    frappe.route_options = {
+        // adjust fieldnames in Coil as per your doctype
+        casting_operation: frm.doc.name,
+        melting_batch: frm.doc.melting_batch,
+        heat_number: frm.doc.heat_number,
+        alloy_grade: frm.doc.alloy_grade,
+        planned_weight: per_coil_weight,     // or 'coil_weight' if that’s your field
+    };
+
+    frappe.new_doc('Coil');
+}
+
+/**
+ * Create Dross Log linked to this Casting Operation
+ */
+function make_dross_log_from_cast(frm) {
+    frappe.route_options = {
+        casting_operation: frm.doc.name,
+        melting_batch: frm.doc.melting_batch,
+        heat_number: frm.doc.heat_number,
+        alloy_grade: frm.doc.alloy_grade,
+        // you can also pass default weight = frm.doc.dross_weight if you have it
+    };
+
+    frappe.new_doc('Dross Log');
+}
+
+/**
+ * Create Energy Log linked to this Casting Operation
+ */
+function make_energy_log_from_cast(frm) {
+    frappe.route_options = {
+        casting_operation: frm.doc.name,
+        melting_batch: frm.doc.melting_batch,
+        heat_number: frm.doc.heat_number,
+        furnace: frm.doc.furnace,
+        shift: frm.doc.shift,
+        // e.g. default_start_time: frm.doc.start_time if you want
+    };
+
+    frappe.new_doc('Energy Log');
+}
+
+Casting Operation
+// Client Script for "Casting Operation"
+
+frappe.ui.form.on('Casting Operation', {
+    refresh(frm) {
+        // Clean old buttons
+        frm.clear_custom_buttons();
+
+        // Only in Draft
+        if (frm.doc.docstatus === 0) {
+            // Not started yet → show "Start Casting"
+            if (!frm.doc.start_time) {
+                frm.add_custom_button(__('Start Casting'), () => {
+                    start_casting(frm);
+                }).addClass('btn-primary');
+            }
+            // Started but not ended → show "Stop Casting"
+            else if (frm.doc.start_time && !frm.doc.end_time) {
+                frm.add_custom_button(__('Stop Casting'), () => {
+                    stop_casting(frm);
+                }).addClass('btn-danger');
+            }
+        }
+
+        // Recalculate on refresh (in case something changed via server)
+        calculate_duration(frm);
+        calculate_yield(frm);
+    },
+
+    // Whenever these fields change, recompute yield
+    planned_melt_weight(frm) {
+        calculate_yield(frm);
+    },
+
+    total_cast_weight(frm) {
+        calculate_yield(frm);
+    },
+
+    // Also on validate – last safety net
+    validate(frm) {
+        calculate_duration(frm);
+        calculate_yield(frm);
+    }
+});
+
+/**
+ * Start Casting:
+ * - basic validations
+ * - set start_time = now
+ * - status = "In Progress"
+ * - save doc
+ */
+function start_casting(frm) {
+    // Basic checks
+    if (!frm.doc.melting_batch) {
+        frappe.msgprint(__('Please select a Melting Batch before starting casting.'));
+        return;
+    }
+    if (!frm.doc.caster_machine) {
+        frappe.msgprint(__('Please select a Caster Machine before starting casting.'));
+        return;
+    }
+    if (!frm.doc.operator) {
+        frappe.msgprint(__('Please select an Operator before starting casting.'));
+        return;
+    }
+
+    if (frm.doc.start_time) {
+        frappe.msgprint(__('Casting already started.'));
+        return;
+    }
+
+    frm.set_value('start_time', frappe.datetime.now_datetime());
+    frm.set_value('status', 'In Progress');
+
+    frm.save().then(() => {
+        frappe.msgprint(__('Casting started.'));
+    });
+}
+
+/**
+ * Stop Casting:
+ * - require start_time
+ * - set end_time = now
+ * - calculate duration + yield
+ * - status = "Completed"
+ * - save doc
+ */
+function stop_casting(frm) {
+    if (!frm.doc.start_time) {
+        frappe.msgprint(__('Cannot stop casting because Start Time is not set.'));
+        return;
+    }
+    if (frm.doc.end_time) {
+        frappe.msgprint(__('Casting is already stopped.'));
+        return;
+    }
+
+    // Optional: ensure total_cast_weight is entered
+    if (!frm.doc.total_cast_weight) {
+        frappe.confirm(
+            __('Total Cast Weight is empty. Do you still want to stop casting?'),
+            () => {
+                perform_stop(frm);
+            }
+        );
+    } else {
+        perform_stop(frm);
+    }
+}
+
+function perform_stop(frm) {
+    frm.set_value('end_time', frappe.datetime.now_datetime());
+    frm.set_value('status', 'Completed');
+
+    calculate_duration(frm);
+    calculate_yield(frm);
+
+    frm.save().then(() => {
+        frappe.msgprint(__('Casting stopped and marked as Completed.'));
+    });
+}
+
+/**
+ * Calculate Duration in minutes from start_time & end_time
+ */
+function calculate_duration(frm) {
+    if (frm.doc.start_time && frm.doc.end_time) {
+        // moment.js is available in Frappe
+        let start = moment(frm.doc.start_time);
+        let end = moment(frm.doc.end_time);
+
+        if (end.isBefore(start)) {
+            frappe.msgprint(__('End Time is before Start Time. Please correct the timings.'));
+            return;
+        }
+
+        let diff_mins = moment.duration(end.diff(start)).asMinutes();
+        diff_mins = Math.round(diff_mins * 10) / 10; // 1 decimal place
+
+        frm.set_value('duration_mins', diff_mins);
+    }
+}
+
+/**
+ * Calculate Yield % = (total_cast_weight / planned_melt_weight) * 100
+ */
+function calculate_yield(frm) {
+    let planned = parseFloat(frm.doc.planned_melt_weight) || 0;
+    let cast = parseFloat(frm.doc.total_cast_weight) || 0;
+
+    if (planned > 0 && cast >= 0) {
+        let y = (cast / planned) * 100;
+        y = Math.round(y * 100) / 100; // 2 decimals
+        frm.set_value('yield_percent', y);
+    } else {
+        frm.set_value('yield_percent', null);
+    }
+}
+
+Recipe-ignore draft
+
+frappe.ui.form.on('Melting Batch Plan', {
+    refresh(frm) {
+        set_recipe_filter(frm);
+    },
+
+    onload(frm) {
+        set_recipe_filter(frm);
+    },
+
+    alloy_grade(frm) {
+        // re-apply filter when alloy changes
+        set_recipe_filter(frm);
+    }
+});
+
+function set_recipe_filter(frm) {
+    frm.set_query('recipe', () => {
+        let filters = {
+            docstatus: 1    // only submitted recipes
+        };
+
+        if (frm.doc.alloy_grade) {
+            filters["alloy_grade"] = frm.doc.alloy_grade;
+        }
+
+        return { filters: filters };
+    });
+}
+
+Melting batch plan- Plan date
+frappe.ui.form.on("Melting Batch Plan", {
+    plan_date(frm) {
+        if (!frm.doc.plan_date) return;
+
+        let selected = frappe.datetime.str_to_obj(frm.doc.plan_date);
+        let today = frappe.datetime.str_to_obj(frappe.datetime.get_today());
+
+        // If selected date is before today
+        if (selected < today) {
+            frappe.msgprint({
+                title: __("Invalid Date"),
+                message: __("Plan Date cannot be earlier than today."),
+                indicator: "red"
+            });
+
+            // Reset the field
+            frm.set_value("plan_date", "");
+        }
+    },
+
+    validate(frm) {
+        if (frm.doc.plan_date) {
+            let selected = frappe.datetime.str_to_obj(frm.doc.plan_date);
+            let today = frappe.datetime.str_to_obj(frappe.datetime.get_today());
+
+            if (selected < today) {
+                frappe.throw("Plan Date cannot be earlier than today.");
+            }
+        }
+    }
+});
+
+Recepie MasterValidation
+frappe.ui.form.on('Recipe Master', {
+    validate(frm) {
+        let total_ratio = 0;
+
+        // Replace 'compositions' with your table fieldname if different
+        (frm.doc.compositions || []).forEach(row => {
+            // Replace 'ratio' with your fieldname if different
+            total_ratio += flt(row.ratio || 0);
+        });
+
+        if (total_ratio !== 100) {
+            frappe.throw(
+                __("Total of all Planned % or Ratio must be exactly 100%. Current total: {0}%", [total_ratio])
+            );
+        }
+    }
+});
+
+Melting Batch - Start/Stop
+// Client Script for Melting Batch
+// Doctype: "Melting Batch"
+
+frappe.ui.form.on('Melting Batch', {
+    refresh(frm) {
+        // No buttons on brand-new unsaved document
+        if (frm.is_new()) return;
+
+        // Avoid duplicates if refresh is called multiple times
+        if (frm.clear_custom_buttons) {
+            frm.clear_custom_buttons();
+        }
+
+        // --- Status-based main buttons ---
+
+        // 1) Start Melting - only when still in Draft state (not started)
+        if (!frm.doc.status || frm.doc.status === 'Draft') {
+            frm.add_custom_button(__('Start Melting'), () => {
+                if (frm.doc.start_time) {
+                    frappe.msgprint(__('Start Time is already set.'));
+                    return;
+                }
+
+                frm.set_value('start_time', frappe.datetime.now_datetime());
+                frm.set_value('status', 'In Progress');
+                frm.save();
+            }, __('Operations')).addClass('btn-primary');
+
+            // Load Raw Materials button also useful in Draft
+            frm.add_custom_button(__('Load Raw Materials'), () => {
+                load_raw_materials_from_plan(frm);
+            }, __('Operations'));
+        }
+
+        // 2) End Melting - when In Progress and no end_time yet
+        if (frm.doc.status === 'In Progress') {
+            frm.add_custom_button(__('End Melting'), () => {
+                if (frm.doc.end_time) {
+                    frappe.msgprint(__('End Time is already set.'));
+                    return;
+                }
+
+                frm.set_value('end_time', frappe.datetime.now_datetime());
+                frm.set_value('status', 'Completed');
+                frm.save();
+            }, __('Operations')).addClass('btn-danger');
+
+            // Allow loading raw materials even while in progress
+            frm.add_custom_button(__('Load Raw Materials'), () => {
+                load_raw_materials_from_plan(frm);
+            }, __('Operations'));
+        }
+
+        // 3) Post-melting actions - when Completed
+        if (frm.doc.status === 'Completed') {
+            // Start Casting (create Casting Operation)
+            frm.add_custom_button(__('Start Casting'), () => {
+                create_casting_operation(frm);
+            }, __('Next Step')).addClass('btn-primary');
+
+            // Dross Log
+            frm.add_custom_button(__('Add Dross Log'), () => {
+                create_dross_log(frm);
+            }, __('Logs'));
+
+            // Energy Log
+            frm.add_custom_button(__('Add Energy Log'), () => {
+                create_energy_log(frm);
+            }, __('Logs'));
+        }
+
+        // 4) Available in any non-new doc
+
+        // Record parameters - scroll to parameters table and add a row
+        frm.add_custom_button(__('Record Parameters'), () => {
+            record_parameters_row(frm);
+        }, __('Logs'));
+
+        // Report Breakdown - open Breakdown Log with this batch prefilled
+        frm.add_custom_button(__('Report Breakdown'), () => {
+            create_breakdown_log(frm);
+        }, __('Logs'));
+
+        // Approve Deviation - if header has is_deviation checked
+        if (frm.doc.is_deviation && !frm.doc.deviation_approved) {
+            frm.add_custom_button(__('Approve Deviation'), () => {
+                approve_deviation(frm);
+            }, __('Supervisor')).addClass('btn-success');
+        }
+
+        // Print Heat Slip
+        frm.add_custom_button(__('Print Heat Slip'), () => {
+            frm.print_doc();
+        }, __('Print'));
+    }
+});
+
+// Helper: Load Raw Materials from Melting Batch Plan into Charged Materials
+function load_raw_materials_from_plan(frm) {
+    if (!frm.doc.melting_batch_plan) {
+        frappe.msgprint(__('Please select a Melting Batch Plan first.'));
+        return;
+    }
+
+    frappe.call({
+        method: 'frappe.client.get',
+        args: {
+            doctype: 'Melting Batch Plan',
+            name: frm.doc.melting_batch_plan
+        },
+        callback: function(r) {
+            if (!r.message) {
+                frappe.msgprint(__('Unable to load Melting Batch Plan.'));
+                return;
+            }
+
+            const plan = r.message;
+            const planned_rows = plan.planned_materials || [];
+
+            if (!planned_rows.length) {
+                frappe.msgprint(__('No Planned Materials found in the selected Melting Batch Plan.'));
+                return;
+            }
+
+            frm.clear_table('charged_materials');
+
+            planned_rows.forEach(row => {
+                let child = frm.add_child('charged_materials');
+                child.item = row.item;
+                child.source_type = row.source_type;
+                // If your fieldnames differ, adjust here:
+                child.planned_qty_kg = row.planned_qty_kg || 0;
+                // actual_qty_kg remains to be filled by operator
+            });
+
+            frm.refresh_field('charged_materials');
+            frappe.msgprint(__('Planned materials loaded into Charged Materials. Please fill Actual Qty (kg).'));
+        }
+    });
+}
+
+// Helper: Record Parameters (focus + add a row)
+function record_parameters_row(frm) {
+    // Scroll to parameters table if present
+    if (frm.fields_dict.parameters) {
+        frm.scroll_to_field('parameters');
+    }
+
+    let child = frm.add_child('parameters');
+    frm.refresh_field('parameters');
+
+    frappe.msgprint(__('New parameter row added. Please select parameter and enter actual value.'));
+}
+
+// Helper: Create Casting Operation from Melting Batch
+function create_casting_operation(frm) {
+    frappe.model.with_doctype('Casting Operation', () => {
+        let doc = frappe.model.get_new_doc('Casting Operation');
+        // Prefill some key fields
+        doc.melting_batch = frm.doc.name;
+        doc.alloy_grade = frm.doc.alloy_grade;
+        doc.recipe = frm.doc.recipe;
+        doc.furnace = frm.doc.furnace;
+        doc.heat_number = frm.doc.heat_number;
+
+        frappe.set_route('Form', 'Casting Operation', doc.name);
+    });
+}
+
+// Helper: Create Dross Log from Melting Batch
+function create_dross_log(frm) {
+    frappe.model.with_doctype('Dross Log', () => {
+        let doc = frappe.model.get_new_doc('Dross Log');
+        doc.melting_batch = frm.doc.name;
+        doc.alloy_grade = frm.doc.alloy_grade;
+        doc.furnace = frm.doc.furnace;
+        doc.heat_number = frm.doc.heat_number;
+
+        frappe.set_route('Form', 'Dross Log', doc.name);
+    });
+}
+
+// Helper: Create Energy Log from Melting Batch
+function create_energy_log(frm) {
+    frappe.model.with_doctype('Energy Log', () => {
+        let doc = frappe.model.get_new_doc('Energy Log');
+        doc.melting_batch = frm.doc.name;
+        doc.furnace = frm.doc.furnace;
+        doc.shift = frm.doc.shift;
+        doc.batch_id = frm.doc.name;
+
+        frappe.set_route('Form', 'Energy Log', doc.name);
+    });
+}
+
+// Helper: Create Breakdown Log from Melting Batch
+function create_breakdown_log(frm) {
+    frappe.model.with_doctype('Breakdown Log', () => {
+        let doc = frappe.model.get_new_doc('Breakdown Log');
+        doc.reference_doctype = 'Melting Batch';
+        doc.reference_name = frm.doc.name;
+        doc.machine = frm.doc.furnace;
+        doc.shift = frm.doc.shift;
+
+        frappe.set_route('Form', 'Breakdown Log', doc.name);
+    });
+}
+
+// Helper: Approve Deviation (Supervisor action)
+function approve_deviation(frm) {
+    frappe.confirm(
+        __('Are you sure you want to approve this deviation?'),
+        () => {
+            frm.set_value('deviation_approved', 1);
+            frm.set_value('deviation_approved_by', frappe.session.user);
+            frm.save().then(() => {
+                frappe.msgprint(__('Deviation approved.'));
+                frm.reload_doc();
+            });
+        }
+    );
+}
+
+Melting Batch Plan
+// Client Script for Melting Batch Plan
+// Doctype: "Melting Batch Plan"
+
+frappe.ui.form.on('Melting Batch Plan', {
+
+    // When form loads, set recipe filter once
+    onload(frm) {
+        set_recipe_query(frm);
+    },
+
+    // When Alloy Grade changes, re-apply filter for recipes
+    alloy_grade(frm) {
+        set_recipe_query(frm);
+
+        // Clear recipe & table if alloy is changed
+        frm.set_value('recipe', null);
+        frm.clear_table('planned_materials');
+        frm.refresh_field('planned_materials');
+    },
+
+    // When Recipe is selected, pull raw materials from Recipe Master
+    recipe(frm) {
+        if (!frm.doc.recipe) return;
+
+        frappe.call({
+            method: "frappe.client.get",
+            args: {
+                doctype: "Recipe Master",
+                name: frm.doc.recipe
+            },
+            callback: function(r) {
+                if (!r.message) return;
+
+                // Clear existing planned materials
+                frm.clear_table("planned_materials");
+
+                // r.message.raw_materials should be the child table in Recipe Master
+                (r.message.raw_materials || []).forEach(row => {
+                    let child = frm.add_child("planned_materials");
+                    child.item        = row.item;
+                    child.source_type = row.source_type;
+                    child.ratio       = row.ratio;      // % ratio
+                    // planned_qty will be calculated once melt weight is entered
+                });
+
+                frm.refresh_field("planned_materials");
+
+                // If melt weight is already filled, recalc quantities
+                if (frm.doc.planned_melt_weight) {
+                    frm.trigger('planned_melt_weight');
+                }
+            }
+        });
+    },
+
+    // When Planned Melt Weight changes, calculate planned qty for each RM
+    planned_melt_weight(frm) {
+        if (!frm.doc.planned_melt_weight) return;
+
+        (frm.doc.planned_materials || []).forEach(row => {
+            if (row.ratio) {
+                // planned_qty = Melt Weight * (Ratio% / 100)
+                row.planned_qty = (frm.doc.planned_melt_weight * row.ratio) / 100.0;
+            }
+        });
+
+        frm.refresh_field('planned_materials');
+    }
+
+});
+
+// Helper: filter Recipe based on selected Alloy Grade
+function set_recipe_query(frm) {
+    frm.set_query("recipe", function() {
+        let filters = {};
+        if (frm.doc.alloy_grade) {
+            filters.alloy_grade = frm.doc.alloy_grade;
+        }
+        return { filters: filters };
+    });
+}
+
