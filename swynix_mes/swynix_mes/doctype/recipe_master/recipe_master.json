@@ -5,36 +5,21 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "attachments_section",
-  "specification_document",
-  "composition_section",
-  "composition_details",
   "header_section",
+  "recipe_id",
+  "recipe_name",
+  "column_break_rhcn",
   "alloy_grade",
-  "description",
-  "recipe_id"
+  "remarks",
+  "composition_section",
+  "compositions",
+  "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "attachments_section",
-   "fieldtype": "Section Break",
-   "label": "Attachments"
-  },
-  {
-   "fieldname": "specification_document",
-   "fieldtype": "Attach",
-   "label": "Specification Document"
-  },
   {
    "fieldname": "composition_section",
    "fieldtype": "Section Break",
    "label": "Composition"
-  },
-  {
-   "fieldname": "composition_details",
-   "fieldtype": "Table",
-   "label": "Composition Details",
-   "options": "Recipe Detail"
   },
   {
    "fieldname": "header_section",
@@ -43,15 +28,11 @@
   },
   {
    "fieldname": "alloy_grade",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Alloy Grade",
+   "options": "Alloy Grade",
    "reqd": 1
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Small Text",
-   "label": "Description"
   },
   {
    "fieldname": "recipe_id",
@@ -60,13 +41,44 @@
    "label": "Recipe ID",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "recipe_name",
+   "fieldtype": "Data",
+   "label": "Recipe Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_rhcn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "compositions",
+   "fieldtype": "Table",
+   "label": "Compositions",
+   "options": "Recipe Detail"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Recipe Master",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-27 08:05:47.680618",
+ "modified": "2025-11-29 13:15:52.873580",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Recipe Master",

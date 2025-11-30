@@ -281,7 +281,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Planning",
-   "link_count": 6,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -299,29 +299,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Rolling Plan Pass",
-   "link_count": 0,
-   "link_to": "Rolling Plan Pass",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Recipe Master",
    "link_count": 0,
    "link_to": "Recipe Master",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Recipe Detail",
-   "link_count": 0,
-   "link_to": "Recipe Detail",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -345,9 +325,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Alloy Grade Master",
+   "link_count": 0,
+   "link_to": "Alloy Grade",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-11-28 23:11:13.588443",
+ "modified": "2025-11-29 13:11:18.232391",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Swynix MES",

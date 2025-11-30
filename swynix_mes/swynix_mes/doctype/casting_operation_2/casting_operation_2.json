@@ -1,0 +1,139 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-27 02:09:28.874491",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "coil_produced_section",
+  "alloy",
+  "coil",
+  "thickness",
+  "weight",
+  "width",
+  "header_section",
+  "caster_no",
+  "casting_operation_id",
+  "melting_batch",
+  "notes_section",
+  "remarks",
+  "timing_section",
+  "cast_end_time",
+  "cast_start_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "coil_produced_section",
+   "fieldtype": "Section Break",
+   "label": "Coil Produced"
+  },
+  {
+   "fieldname": "alloy",
+   "fieldtype": "Data",
+   "label": "Alloy"
+  },
+  {
+   "fieldname": "coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Coil",
+   "options": "Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "thickness",
+   "fieldtype": "Float",
+   "label": "Thickness (mm)"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight (Kg)"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width (mm)"
+  },
+  {
+   "fieldname": "header_section",
+   "fieldtype": "Section Break",
+   "label": "Header"
+  },
+  {
+   "fieldname": "caster_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Caster No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "casting_operation_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Casting Operation ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "melting_batch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Furnace Batch / Heat",
+   "options": "Melting Batch"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "cast_end_time",
+   "fieldtype": "Datetime",
+   "label": "Cast End Time"
+  },
+  {
+   "fieldname": "cast_start_time",
+   "fieldtype": "Date",
+   "label": "Cast Start Time",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-27 02:22:28.936208",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Casting Operation 2",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,60 +1,238 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "format:MELT-{#####}",
  "creation": "2025-11-27 02:18:28.812576",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_87ge",
-  "batch_id",
-  "furnace_no",
-  "heat_number",
+  "melting_batch_plan",
+  "furnace",
+  "alloy_grade",
   "recipe",
-  "amended_from",
-  "parameters_section",
-  "additives_used",
-  "holding_temperature",
-  "melting_temperature",
-  "slag_removal_done",
-  "raw_material_inputs_section",
-  "raw_material_inputs",
-  "timing_section",
-  "melt_end_time",
-  "melt_start_time"
+  "shift",
+  "column_break_icrh",
+  "plan_date",
+  "planned_melt_weight",
+  "heat_number",
+  "batch_status_note",
+  "tab_3_tab",
+  "start_time",
+  "end_time",
+  "operator",
+  "status",
+  "column_break_vsuj",
+  "is_deviation",
+  "deviation_reason",
+  "tab_4_tab",
+  "charged_materials",
+  "parameters_and_outputs_tab",
+  "parameter_log",
+  "tab_5_tab",
+  "outputs_and_recovery_section",
+  "metal_to_casting",
+  "dross_qty",
+  "loss_qty",
+  "total_charged",
+  "metal_recovery_pct",
+  "energy_kwh",
+  "lng_qty",
+  "remarks",
+  "amended_from"
  ],
  "fields": [
   {
    "fieldname": "section_break_87ge",
    "fieldtype": "Section Break",
-   "label": "Header"
+   "label": "Details"
   },
   {
-   "fieldname": "batch_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Batch ID",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "furnace_no",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Furnace No",
+   "fetch_from": "melting_batch_plan.recipe",
+   "fieldname": "recipe",
+   "fieldtype": "Link",
+   "label": "Recipe",
+   "options": "Recipe Master",
    "reqd": 1
+  },
+  {
+   "fieldname": "melting_batch_plan",
+   "fieldtype": "Link",
+   "label": "Melting Batch Plan",
+   "options": "Melting Batch Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_icrh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "melting_batch_plan.shift",
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "label": "Shift",
+   "options": "Shift Master",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tab_3_tab",
+   "fieldtype": "Tab Break",
+   "label": "Timing & Operator"
+  },
+  {
+   "fetch_from": "melting_batch_plan.plan_date",
+   "fetch_if_empty": 1,
+   "fieldname": "plan_date",
+   "fieldtype": "Date",
+   "label": "Plan Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "melting_batch_plan.furnace",
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Furnace",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "melting_batch_plan.alloy_grade",
+   "fieldname": "alloy_grade",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Alloy Grade",
+   "options": "Alloy Grade",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "melting_batch_plan.planned_melt_weight_kg",
+   "fieldname": "planned_melt_weight",
+   "fieldtype": "Float",
+   "label": "Planned Melt Weight (kg)",
+   "read_only": 1
   },
   {
    "fieldname": "heat_number",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Heat Number",
    "reqd": 1
   },
   {
-   "fieldname": "recipe",
+   "fieldname": "batch_status_note",
+   "fieldtype": "Small Text",
+   "label": "Batch Status Note"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "End Time"
+  },
+  {
+   "fieldname": "operator",
    "fieldtype": "Link",
-   "label": "Recipe",
-   "options": "Recipe Master"
+   "label": "Operator",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_vsuj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_deviation",
+   "fieldtype": "Check",
+   "label": "Is Deviation from Plan"
+  },
+  {
+   "depends_on": "doc.is_deviation == 1",
+   "fieldname": "deviation_reason",
+   "fieldtype": "Small Text",
+   "label": "Deviation Reason"
+  },
+  {
+   "fieldname": "tab_4_tab",
+   "fieldtype": "Tab Break",
+   "label": "Charged Materials"
+  },
+  {
+   "fieldname": "charged_materials",
+   "fieldtype": "Table",
+   "label": "Charged Materials",
+   "options": "Planned Raw Material"
+  },
+  {
+   "fieldname": "parameters_and_outputs_tab",
+   "fieldtype": "Tab Break",
+   "label": "Parameters and Outputs"
+  },
+  {
+   "fieldname": "parameter_log",
+   "fieldtype": "Table",
+   "label": "Parameter Log",
+   "options": "Parameter Log"
+  },
+  {
+   "fieldname": "tab_5_tab",
+   "fieldtype": "Tab Break",
+   "label": "Outputs and Recovery"
+  },
+  {
+   "fieldname": "outputs_and_recovery_section",
+   "fieldtype": "Section Break",
+   "label": "Outputs and Recovery"
+  },
+  {
+   "fieldname": "metal_to_casting",
+   "fieldtype": "Float",
+   "label": "Metal to Casting (kg)"
+  },
+  {
+   "fieldname": "dross_qty",
+   "fieldtype": "Float",
+   "label": "Dross (kg)"
+  },
+  {
+   "fieldname": "loss_qty",
+   "fieldtype": "Float",
+   "label": "Skull / Losses (kg)"
+  },
+  {
+   "description": "Can be sum of Actual Qty from Charged Materials table by script.",
+   "fieldname": "total_charged",
+   "fieldtype": "Float",
+   "label": "Total Charged (kg)"
+  },
+  {
+   "description": "(Metal to Casting / Total Charged) * 100 - server script",
+   "fieldname": "metal_recovery_pct",
+   "fieldtype": "Float",
+   "label": "Metal Recovery %"
+  },
+  {
+   "fieldname": "energy_kwh",
+   "fieldtype": "Float",
+   "label": "Energy Consumption (kWh)"
+  },
+  {
+   "fieldname": "lng_qty",
+   "fieldtype": "Float",
+   "label": "LNG Consumption"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIn Progress\nCompleted"
   },
   {
    "fieldname": "amended_from",
@@ -65,69 +243,17 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "parameters_section",
-   "fieldtype": "Section Break",
-   "label": "Parameters"
-  },
-  {
-   "fieldname": "additives_used",
-   "fieldtype": "Small Text",
-   "label": "Additives Used"
-  },
-  {
-   "fieldname": "holding_temperature",
-   "fieldtype": "Float",
-   "label": "Holding Temperature"
-  },
-  {
-   "fieldname": "melting_temperature",
-   "fieldtype": "Float",
-   "label": "Melting Temperature"
-  },
-  {
-   "default": "0",
-   "fieldname": "slag_removal_done",
-   "fieldtype": "Check",
-   "label": "Slag Removal Done"
-  },
-  {
-   "fieldname": "raw_material_inputs_section",
-   "fieldtype": "Section Break",
-   "label": "Raw Material Inputs"
-  },
-  {
-   "fieldname": "raw_material_inputs",
-   "fieldtype": "Table",
-   "label": "Raw Material Inputs",
-   "options": "Planned Raw Material"
-  },
-  {
-   "fieldname": "timing_section",
-   "fieldtype": "Section Break",
-   "label": "Timing"
-  },
-  {
-   "fieldname": "melt_end_time",
-   "fieldtype": "Datetime",
-   "label": "Melt End Time"
-  },
-  {
-   "fieldname": "melt_start_time",
-   "fieldtype": "Datetime",
-   "label": "Melt Start Time",
-   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-28 19:48:48.771627",
+ "modified": "2025-11-29 15:13:03.996875",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Melting Batch",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

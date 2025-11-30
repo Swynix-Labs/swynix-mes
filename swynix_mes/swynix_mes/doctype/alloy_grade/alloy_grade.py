@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class MeltingBatchMaterial(Document):
+class AlloyGrade(Document):
 	pass

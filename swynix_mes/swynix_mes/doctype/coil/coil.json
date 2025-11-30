@@ -1,84 +1,252 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "COIL-.YYYY.-.#####",
  "creation": "2025-11-27 01:09:44.707963",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_2bty",
-  "documents",
-  "photos",
-  "remarks",
-  "identification_section",
-  "batch_number",
+  "header_section_tab",
+  "header_section_section",
   "coil_id",
+  "casting_operation",
+  "melting_batch",
+  "column_break_bsze",
   "heat_number",
-  "amended_from",
-  "operations_section",
-  "operations",
-  "physical_properties_section",
-  "alloy_type",
-  "inner_diameter",
-  "outer_diameter",
-  "surface_condition",
+  "alloy_grade",
+  "status",
+  "tab_2_tab",
+  "coil_properties_section",
+  "width",
   "thickness",
   "weight",
-  "width",
-  "process_and_status_section",
-  "current_stage",
-  "source_process",
-  "status",
-  "work_order",
-  "section_break_jhdh",
-  "qc_summary_column",
-  "qc_date",
-  "qc_inspector",
-  "qc_status"
+  "length",
+  "column_break_qqkq",
+  "temper",
+  "surface_finish",
+  "traceability_section_tab",
+  "traceability_section_section",
+  "produced_on",
+  "shift",
+  "furnace",
+  "column_break_iqar",
+  "operato",
+  "casting_machine",
+  "qc_section_tab",
+  "qc_section_section",
+  "qc_required",
+  "qc_status",
+  "quality_inspection",
+  "column_break_case",
+  "qc_remarks",
+  "barcode_and_identification_tab",
+  "barcode_and_identification_section",
+  "barcode",
+  "print_label",
+  "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "section_break_2bty",
-   "fieldtype": "Section Break",
-   "label": "Attachments and Notes"
-  },
-  {
-   "fieldname": "documents",
-   "fieldtype": "Attach",
-   "label": "Documents"
-  },
-  {
-   "fieldname": "photos",
-   "fieldtype": "Attach Image",
-   "label": "Photos"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Small Text",
-   "label": "Remarks"
-  },
-  {
-   "fieldname": "identification_section",
-   "fieldtype": "Section Break",
-   "label": "Identification"
-  },
-  {
-   "fieldname": "batch_number",
-   "fieldtype": "Data",
-   "label": "Batch Number"
-  },
-  {
    "fieldname": "coil_id",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Coil ID",
-   "reqd": 1,
-   "unique": 1
+   "label": "Coil ID"
   },
   {
+   "fieldname": "header_section_tab",
+   "fieldtype": "Tab Break",
+   "label": "HEADER SECTION"
+  },
+  {
+   "fieldname": "header_section_section",
+   "fieldtype": "Section Break",
+   "label": "HEADER SECTION"
+  },
+  {
+   "fieldname": "casting_operation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Casting Operation",
+   "options": "Casting Operation",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "casting_operation.melting_batch",
+   "fetch_if_empty": 1,
+   "fieldname": "melting_batch",
+   "fieldtype": "Link",
+   "label": "Melting Batch",
+   "options": "Melting Batch"
+  },
+  {
+   "fieldname": "tab_2_tab",
+   "fieldtype": "Tab Break",
+   "label": "COIL PROPERTIES"
+  },
+  {
+   "fetch_from": "melting_batch.heat_number",
+   "fetch_if_empty": 1,
    "fieldname": "heat_number",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Heat Number"
+  },
+  {
+   "fetch_from": "melting_batch.alloy_grade",
+   "fetch_if_empty": 1,
+   "fieldname": "alloy_grade",
+   "fieldtype": "Link",
+   "label": "Alloy Grade",
+   "options": "Melting Batch"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIn QC\nQC Passed\nQC Failed\nBlocked\nReady\nConsumed"
+  },
+  {
+   "fieldname": "column_break_bsze",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "coil_properties_section",
+   "fieldtype": "Section Break",
+   "label": "COIL PROPERTIES"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width (mm)"
+  },
+  {
+   "fieldname": "thickness",
+   "fieldtype": "Float",
+   "label": "Thickness (mm or micron)"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight (kg)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length (m)"
+  },
+  {
+   "fieldname": "column_break_qqkq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "temper",
+   "fieldtype": "Data",
+   "label": "Grade / Temper"
+  },
+  {
+   "fieldname": "surface_finish",
+   "fieldtype": "Select",
+   "label": "Surface Finish",
+   "options": "Matte\nBright\nSemi"
+  },
+  {
+   "fieldname": "traceability_section_tab",
+   "fieldtype": "Tab Break",
+   "label": "TRACEABILITY SECTION"
+  },
+  {
+   "fieldname": "traceability_section_section",
+   "fieldtype": "Section Break",
+   "label": "TRACEABILITY SECTION"
+  },
+  {
+   "fieldname": "produced_on",
+   "fieldtype": "Datetime",
+   "label": "Produced On"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "label": "Shift",
+   "options": "Shift Master"
+  },
+  {
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "label": "Furnace",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "column_break_iqar",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operato",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "casting_machine",
+   "fieldtype": "Link",
+   "label": "Casting Machine",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "qc_section_tab",
+   "fieldtype": "Tab Break",
+   "label": "QC SECTION"
+  },
+  {
+   "fieldname": "qc_section_section",
+   "fieldtype": "Section Break",
+   "label": "QC SECTION"
+  },
+  {
+   "default": "1",
+   "fieldname": "qc_required",
+   "fieldtype": "Check",
+   "label": "QC Required"
+  },
+  {
+   "fieldname": "qc_status",
+   "fieldtype": "Select",
+   "label": "QC Status",
+   "options": "Pending\nPassed\nFailed"
+  },
+  {
+   "fieldname": "quality_inspection",
+   "fieldtype": "Link",
+   "label": "Quality Inspection",
+   "options": "Quality Inspection"
+  },
+  {
+   "fieldname": "column_break_case",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qc_remarks",
+   "fieldtype": "Small Text",
+   "label": "QC Remarks"
+  },
+  {
+   "fieldname": "barcode_and_identification_tab",
+   "fieldtype": "Tab Break",
+   "label": "BARCODE AND IDENTIFICATION"
+  },
+  {
+   "fieldname": "barcode_and_identification_section",
+   "fieldtype": "Section Break",
+   "label": "BARCODE AND IDENTIFICATION"
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Data",
+   "label": "Barcode"
+  },
+  {
+   "fieldname": "print_label",
+   "fieldtype": "Button",
+   "label": "Print Label"
   },
   {
    "fieldname": "amended_from",
@@ -89,130 +257,17 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "operations_section",
-   "fieldtype": "Section Break",
-   "label": "Operations"
-  },
-  {
-   "fieldname": "operations",
-   "fieldtype": "Table",
-   "label": "Operations",
-   "options": "Coil Operation"
-  },
-  {
-   "fieldname": "physical_properties_section",
-   "fieldtype": "Section Break",
-   "label": "Physical Properties"
-  },
-  {
-   "fieldname": "alloy_type",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Alloy Type"
-  },
-  {
-   "fieldname": "inner_diameter",
-   "fieldtype": "Float",
-   "label": "Inner Diameter (ID)"
-  },
-  {
-   "fieldname": "outer_diameter",
-   "fieldtype": "Float",
-   "label": "Outer Diameter (OD)"
-  },
-  {
-   "fieldname": "surface_condition",
-   "fieldtype": "Select",
-   "label": "Surface Condition",
-   "options": "Mill Finish\nSemi-finished\nOther"
-  },
-  {
-   "fieldname": "thickness",
-   "fieldtype": "Float",
-   "label": "Thickness (mm)"
-  },
-  {
-   "fieldname": "weight",
-   "fieldtype": "Float",
-   "label": "Weight (Kg)"
-  },
-  {
-   "fieldname": "width",
-   "fieldtype": "Float",
-   "label": "Width (mm)"
-  },
-  {
-   "fieldname": "process_and_status_section",
-   "fieldtype": "Section Break",
-   "label": "Process and Status"
-  },
-  {
-   "fieldname": "current_stage",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Current Stage",
-   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle",
-   "reqd": 1
-  },
-  {
-   "fieldname": "source_process",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Source Process",
-   "options": "Foundry\nCaster\nCRM\nFoil\nFinishing\nCircle",
-   "reqd": 1
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Status",
-   "options": "In Process\nHold\nCompleted\nRejected",
-   "reqd": 1
-  },
-  {
-   "fieldname": "work_order",
-   "fieldtype": "Link",
-   "label": "Work Order",
-   "options": "Work Order"
-  },
-  {
-   "fieldname": "section_break_jhdh",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "qc_summary_column",
-   "fieldtype": "Column Break",
-   "label": "QC Summary"
-  },
-  {
-   "fieldname": "qc_date",
-   "fieldtype": "Date",
-   "label": "QC Date"
-  },
-  {
-   "fieldname": "qc_inspector",
-   "fieldtype": "Link",
-   "label": "QC Inspector",
-   "options": "User"
-  },
-  {
-   "fieldname": "qc_status",
-   "fieldtype": "Select",
-   "label": "QC Status",
-   "options": "Pending\nApproved\nRejected\nRework"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-27 03:17:48.928365",
+ "modified": "2025-11-30 15:09:50.739524",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Coil",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -233,5 +288,8 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
 }
