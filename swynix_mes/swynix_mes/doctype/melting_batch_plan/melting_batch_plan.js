@@ -134,7 +134,7 @@ function fetch_recipe_materials(frm) {
     
     // Call server-side method
     frappe.call({
-        method: 'swynix_mes.fetch_recipe_materials',
+        method: 'swynix_mes.swynix_mes.api.fetch_recipe_materials',
         args: {
             recipe_name: frm.doc.recipe
         },
