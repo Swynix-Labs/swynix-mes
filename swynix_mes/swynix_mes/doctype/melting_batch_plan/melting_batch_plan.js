@@ -57,8 +57,8 @@ frappe.ui.form.on('Melting Batch Plan', {
                 // Clear existing planned materials
                 frm.clear_table("planned_materials");
 
-                // r.message.raw_materials should be the child table in Recipe Master
-                (r.message.raw_materials || []).forEach(row => {
+                // r.message.compositions is the child table in Recipe Master
+                (r.message.compositions || []).forEach(row => {
                     let child = frm.add_child("planned_materials");
                     child.item        = row.item;
                     child.source_type = row.source_type;
@@ -69,27 +69,16 @@ frappe.ui.form.on('Melting Batch Plan', {
                 frm.refresh_field("planned_materials");
 
                 // If melt weight is already filled, recalc quantities
-                if (frm.doc.planned_melt_weight) {
-                    frm.trigger('planned_melt_weight');
+                if (frm.doc.planned_melt_weight_kg) {
+                    frm.trigger('planned_melt_weight_kg');
                 }
             }
         });
     },
 
-    planned_melt_weight: function(frm) {
+    planned_melt_weight_kg: function(frm) {
         // Recalculate planned quantities when planned melt weight changes
         calculate_planned_quantities(frm);
-
-        if (!frm.doc.planned_melt_weight) return;
-
-        (frm.doc.planned_materials || []).forEach(row => {
-            if (row.ratio) {
-                // planned_qty = Melt Weight * (Ratio% / 100)
-                row.planned_qty = (frm.doc.planned_melt_weight * row.ratio) / 100.0;
-            }
-        });
-
-        frm.refresh_field('planned_materials');
     },
 
     plan_date(frm) {
@@ -124,8 +113,8 @@ frappe.ui.form.on('Melting Batch Plan', {
 });
 
 // Handle child table changes
-frappe.ui.form.on('Melting Batch Plan Compositions', {
-    planned_percent_or_ratio: function(frm, cdt, cdn) {
+frappe.ui.form.on('Recipe Detail', {
+    ratio: function(frm, cdt, cdn) {
         // Recalculate when ratio changes
         calculate_planned_quantities(frm);
     }
@@ -151,20 +140,20 @@ function fetch_recipe_materials(frm) {
         },
         callback: function(r) {
             if (r.message && r.message.success) {
-                // Clear existing compositions
-                frm.clear_table('compositions');
+                // Clear existing planned_materials
+                frm.clear_table('planned_materials');
                 
-                // Add each material to compositions
+                // Add each material to planned_materials
                 r.message.materials.forEach(function(material) {
-                    let row = frm.add_child('compositions');
+                    let row = frm.add_child('planned_materials');
                     row.item = material.item;
                     row.source_type = material.source_type;
-                    row.planned_percent_or_ratio = material.planned_percent_or_ratio;
+                    row.ratio = material.ratio;
                     row.planned_qty = material.planned_qty;
                 });
                 
                 // Refresh and calculate
-                frm.refresh_field('compositions');
+                frm.refresh_field('planned_materials');
                 calculate_planned_quantities(frm);
                 
                 frappe.show_alert({
@@ -191,16 +180,16 @@ function fetch_recipe_materials(frm) {
 }
 
 function calculate_planned_quantities(frm) {
-    if (!frm.doc.planned_melt_weight || frm.doc.planned_melt_weight <= 0) {
+    if (!frm.doc.planned_melt_weight_kg || frm.doc.planned_melt_weight_kg <= 0) {
         return;
     }
     
     let total_ratio = 0;
     
     // Calculate total ratio/percentage
-    frm.doc.compositions.forEach(function(row) {
-        if (row.planned_percent_or_ratio) {
-            total_ratio += flt(row.planned_percent_or_ratio);
+    (frm.doc.planned_materials || []).forEach(function(row) {
+        if (row.ratio) {
+            total_ratio += flt(row.ratio);
         }
     });
     
@@ -209,15 +198,15 @@ function calculate_planned_quantities(frm) {
     }
     
     // Calculate planned quantity for each row
-    frm.doc.compositions.forEach(function(row) {
-        if (row.planned_percent_or_ratio) {
+    (frm.doc.planned_materials || []).forEach(function(row) {
+        if (row.ratio) {
             // Formula: (Ratio / Total Ratio) * Planned Melt Weight
-            let ratio_fraction = flt(row.planned_percent_or_ratio) / total_ratio;
-            row.planned_qty = flt(ratio_fraction * flt(frm.doc.planned_melt_weight), 3);
+            let ratio_fraction = flt(row.ratio) / total_ratio;
+            row.planned_qty = flt(ratio_fraction * flt(frm.doc.planned_melt_weight_kg), 3);
         }
     });
     
-    frm.refresh_field('compositions');
+    frm.refresh_field('planned_materials');
     
     frappe.show_alert({
         message: __('Planned quantities calculated'),
