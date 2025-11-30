@@ -132,12 +132,10 @@ function fetch_recipe_materials(frm) {
         indicator: 'blue'
     }, 3);
     
-    // Call server-side method
-    frappe.call({
-        method: 'swynix_mes.api.fetch_recipe_materials',
-        args: {
-            recipe_name: frm.doc.recipe
-        },
+    // Call server-side method using frm.call (method inside Document class)
+    frm.call({
+        method: 'fetch_recipe_materials',
+        doc: frm.doc,
         callback: function(r) {
             if (r.message && r.message.success) {
                 // Clear existing planned_materials
