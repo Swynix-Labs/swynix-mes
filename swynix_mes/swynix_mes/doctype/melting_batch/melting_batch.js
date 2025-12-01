@@ -128,9 +128,9 @@ function load_raw_materials_from_plan(frm) {
                 let child = frm.add_child('charged_materials');
                 child.item = row.item;
                 child.source_type = row.source_type;
-                // If your fieldnames differ, adjust here:
-                child.planned_qty_kg = row.planned_qty_kg || 0;
-                // actual_qty_kg remains to be filled by operator
+                // Map planned_qty from Recipe Detail to planned_qty_kg in Planned Raw Material
+                child.planned_qty_kg = row.planned_qty || 0;
+                // actual_qty remains to be filled by operator
             });
 
             frm.refresh_field('charged_materials');
