@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "rolling_plan_id",
+ "search_fields": "rolling_plan_id,coil",
  "creation": "2025-11-27 08:18:35.852513",
  "doctype": "DocType",
  "engine": "InnoDB",

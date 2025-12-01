@@ -24,10 +24,11 @@
   "tension",
   "timing_and_meta_section",
   "end_time",
+  "start_time",
+  "duration_mins",
   "operator",
   "remarks",
-  "scrap_qty",
-  "start_time"
+  "scrap_qty"
  ],
  "fields": [
   {
@@ -131,7 +132,8 @@
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "remarks",
@@ -147,6 +149,12 @@
    "fieldname": "start_time",
    "fieldtype": "Datetime",
    "label": "Start Time"
+  },
+  {
+   "fieldname": "duration_mins",
+   "fieldtype": "Float",
+   "label": "Duration (mins)",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

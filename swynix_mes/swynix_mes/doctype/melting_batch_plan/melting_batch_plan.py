@@ -50,4 +50,26 @@ class MeltingBatchPlan(Document):
 				"materials": [],
 				"message": str(e),
 			}
+
+
+@frappe.whitelist()
+def generate_batch_plan_id():
+	"""Generate unique Batch Plan ID in format MBPLAN-####"""
+	prefix = "MBPLAN"
+	# Get max existing number
+	last_id = frappe.db.sql("""
+		SELECT batch_plan_id 
+		FROM `tabMelting Batch Plan` 
+		WHERE batch_plan_id LIKE %s 
+		ORDER BY CAST(SUBSTRING_INDEX(batch_plan_id, '-', -1) AS UNSIGNED) DESC 
+		LIMIT 1
+	""", (f"{prefix}-%",), as_dict=True)
+	
+	if last_id and last_id[0].get("batch_plan_id"):
+		last_num = int(last_id[0]["batch_plan_id"].split("-")[1])
+		new_num = last_num + 1
+	else:
+		new_num = 1
+	
+	return f"{prefix}-{new_num:04d}"
     

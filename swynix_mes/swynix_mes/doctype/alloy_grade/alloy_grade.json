@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "alloy_name",
+ "search_fields": "alloy_code,alloy_name",
  "creation": "2025-11-29 11:58:13.292010",
  "doctype": "DocType",
  "engine": "InnoDB",

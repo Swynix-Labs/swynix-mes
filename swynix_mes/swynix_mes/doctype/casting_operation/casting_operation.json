@@ -128,7 +128,8 @@
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "status",
@@ -147,7 +148,7 @@
    "label": "Is Deviation from Plan"
   },
   {
-   "depends_on": "doc.is_deviation == 1",
+   "depends_on": "eval:doc.is_deviation == 1",
    "fieldname": "deviation_reason",
    "fieldtype": "Small Text",
    "label": "Deviation Reason"
@@ -193,7 +194,8 @@
   {
    "fieldname": "duration_mins",
    "fieldtype": "Float",
-   "label": "Duration (mins)"
+   "label": "Duration (mins)",
+   "read_only": 1
   },
   {
    "fieldname": "total_cast_weight",

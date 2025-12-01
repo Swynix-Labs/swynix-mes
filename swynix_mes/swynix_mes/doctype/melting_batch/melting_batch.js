@@ -2,7 +2,66 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Melting Batch', {
+    onload(frm) {
+        // Auto-fill operator with logged-in user for new documents
+        if (frm.is_new() && !frm.doc.operator) {
+            frm.set_value('operator', frappe.session.user);
+        }
+        // Set operator field as readonly
+        frm.set_df_property('operator', 'read_only', 1);
+    },
+    operator(frm) {
+        // Prevent operator from being changed - always reset to logged-in user
+        if (frm.doc.operator !== frappe.session.user) {
+            frm.set_value('operator', frappe.session.user);
+        }
+    },
+    metal_to_casting(frm) {
+        calculate_metal_recovery(frm);
+    },
+    melting_batch_plan(frm) {
+        if (frm.doc.melting_batch_plan) {
+            load_planned_materials_from_plan(frm);
+        } else {
+            frm.clear_table('charged_materials');
+            frm.refresh_field('charged_materials');
+        }
+        // Recalculate total_charged after materials are loaded
+        calculate_total_charged(frm);
+    },
     refresh(frm) {
+        // Ensure operator is always set to logged-in user and readonly
+        if (frm.is_new() && !frm.doc.operator) {
+            frm.set_value('operator', frappe.session.user);
+        }
+        frm.set_df_property('operator', 'read_only', 1);
+        
+        // Calculate duration
+        calculate_duration(frm);
+        
+        // Calculate total charged and metal recovery
+        calculate_total_charged(frm);
+        calculate_metal_recovery(frm);
+        
+        // Set up periodic update for duration if end_time is not set
+        if (frm.doc.start_time && !frm.doc.end_time) {
+            if (frm.duration_interval) {
+                clearInterval(frm.duration_interval);
+            }
+            frm.duration_interval = setInterval(() => {
+                if (frm.doc.start_time && !frm.doc.end_time) {
+                    calculate_duration(frm);
+                } else {
+                    clearInterval(frm.duration_interval);
+                }
+            }, 60000); // Update every minute
+        } else {
+            if (frm.duration_interval) {
+                clearInterval(frm.duration_interval);
+                frm.duration_interval = null;
+            }
+        }
+        
         // No buttons on brand-new unsaved document
         if (frm.is_new()) return;
 
@@ -42,6 +101,7 @@ frappe.ui.form.on('Melting Batch', {
 
                 frm.set_value('end_time', frappe.datetime.now_datetime());
                 frm.set_value('status', 'Completed');
+                calculate_duration(frm);
                 frm.save();
             }, __('Operations')).addClass('btn-danger');
 
@@ -53,10 +113,18 @@ frappe.ui.form.on('Melting Batch', {
 
         // 3) Post-melting actions - when Completed
         if (frm.doc.status === 'Completed') {
-            // Start Casting (create Casting Operation)
-            frm.add_custom_button(__('Start Casting'), () => {
-                create_casting_operation(frm);
-            }, __('Next Step')).addClass('btn-primary');
+            // Start Casting (create Casting Operation) - only show after document is submitted
+            // docstatus === 1 means document is submitted (not just saved)
+            if (!frm.is_new() && frm.doc.docstatus === 1) {
+                frm.add_custom_button(__('Start Casting'), () => {
+                    create_casting_operation(frm);
+                }, __('Next Step')).addClass('btn-primary');
+            }
+
+            // Get PLC
+            frm.add_custom_button(__('Get PLC'), () => {
+                // Placeholder - no action for now
+            }, __('Next Step'));
 
             // Dross Log
             frm.add_custom_button(__('Add Dross Log'), () => {
@@ -95,10 +163,9 @@ frappe.ui.form.on('Melting Batch', {
     }
 });
 
-// Helper: Load Raw Materials from Melting Batch Plan into Charged Materials
-function load_raw_materials_from_plan(frm) {
+// Helper: Load Raw Materials from Melting Batch Plan into Charged Materials (auto-fetch)
+function load_planned_materials_from_plan(frm) {
     if (!frm.doc.melting_batch_plan) {
-        frappe.msgprint(__('Please select a Melting Batch Plan first.'));
         return;
     }
 
@@ -110,7 +177,6 @@ function load_raw_materials_from_plan(frm) {
         },
         callback: function(r) {
             if (!r.message) {
-                frappe.msgprint(__('Unable to load Melting Batch Plan.'));
                 return;
             }
 
@@ -118,7 +184,6 @@ function load_raw_materials_from_plan(frm) {
             const planned_rows = plan.planned_materials || [];
 
             if (!planned_rows.length) {
-                frappe.msgprint(__('No Planned Materials found in the selected Melting Batch Plan.'));
                 return;
             }
 
@@ -130,13 +195,23 @@ function load_raw_materials_from_plan(frm) {
                 child.source_type = row.source_type;
                 // Map planned_qty from Recipe Detail to planned_qty_kg in Planned Raw Material
                 child.planned_qty_kg = row.planned_qty || 0;
-                // actual_qty remains to be filled by operator
+                // actual_qty and warehouse remain to be filled by operator
             });
 
             frm.refresh_field('charged_materials');
-            frappe.msgprint(__('Planned materials loaded into Charged Materials. Please fill Actual Qty (kg).'));
         }
     });
+}
+
+// Helper: Load Raw Materials from Melting Batch Plan into Charged Materials (manual button)
+function load_raw_materials_from_plan(frm) {
+    if (!frm.doc.melting_batch_plan) {
+        frappe.msgprint(__('Please select a Melting Batch Plan first.'));
+        return;
+    }
+
+    load_planned_materials_from_plan(frm);
+    frappe.msgprint(__('Planned materials loaded into Charged Materials. Please fill Actual Qty (kg) and Warehouse.'));
 }
 
 // Helper: Record Parameters (focus + add a row)
@@ -219,4 +294,101 @@ function approve_deviation(frm) {
             });
         }
     );
+}
+
+// Handle Planned Raw Material child table
+frappe.ui.form.on('Planned Raw Material', {
+    item(frm, cdt, cdn) {
+        // Prevent manual editing of item if it was auto-filled from plan
+        let row = locals[cdt][cdn];
+        if (frm.doc.melting_batch_plan && row.item) {
+            // Item should remain readonly - this is just a safeguard
+        }
+    },
+    source_type(frm, cdt, cdn) {
+        // Prevent manual editing of source_type if it was auto-filled from plan
+        let row = locals[cdt][cdn];
+        if (frm.doc.melting_batch_plan && row.source_type) {
+            // Source type should remain readonly - this is just a safeguard
+        }
+    },
+    actual_qty(frm, cdt, cdn) {
+        // Recalculate total_charged when actual_qty changes
+        calculate_total_charged(frm);
+        calculate_metal_recovery(frm);
+    },
+    form_render(frm, cdt, cdn) {
+        // Ensure readonly fields remain readonly when form is rendered
+        let row = locals[cdt][cdn];
+        if (frm.doc.melting_batch_plan) {
+            // Fields are already readonly from JSON, but ensure they stay that way
+            if (row.item) {
+                frm.set_df_property('item', 'read_only', 1, cdn, 'charged_materials');
+            }
+            if (row.source_type) {
+                frm.set_df_property('source_type', 'read_only', 1, cdn, 'charged_materials');
+            }
+        }
+    },
+    charged_materials_remove(frm) {
+        // Recalculate when row is removed
+        calculate_total_charged(frm);
+        calculate_metal_recovery(frm);
+    }
+});
+
+/**
+ * Calculate Duration in minutes from start_time & end_time
+ * If end_time is not set, use current time
+ */
+function calculate_duration(frm) {
+    if (frm.doc.start_time) {
+        // moment.js is available in Frappe
+        let start = moment(frm.doc.start_time);
+        let end = frm.doc.end_time ? moment(frm.doc.end_time) : moment();
+
+        if (end.isBefore(start)) {
+            frappe.msgprint(__('End Time is before Start Time. Please correct the timings.'));
+            return;
+        }
+
+        let diff_mins = moment.duration(end.diff(start)).asMinutes();
+        diff_mins = Math.round(diff_mins * 10) / 10; // 1 decimal place
+
+        frm.set_value('duration_mins', diff_mins);
+    } else {
+        // Clear duration if start_time is missing
+        frm.set_value('duration_mins', null);
+    }
+}
+
+/**
+ * Calculate Total Charged from sum of actual_qty in charged_materials table
+ */
+function calculate_total_charged(frm) {
+    let total = 0;
+    if (frm.doc.charged_materials && frm.doc.charged_materials.length > 0) {
+        frm.doc.charged_materials.forEach(row => {
+            if (row.actual_qty) {
+                total += parseFloat(row.actual_qty) || 0;
+            }
+        });
+    }
+    frm.set_value('total_charged', total);
+}
+
+/**
+ * Calculate Metal Recovery % = (Metal to Casting / Total Charged) * 100
+ */
+function calculate_metal_recovery(frm) {
+    let metal_to_casting = parseFloat(frm.doc.metal_to_casting) || 0;
+    let total_charged = parseFloat(frm.doc.total_charged) || 0;
+
+    if (total_charged > 0 && metal_to_casting >= 0) {
+        let recovery = (metal_to_casting / total_charged) * 100;
+        recovery = Math.round(recovery * 100) / 100; // 2 decimal places
+        frm.set_value('metal_recovery_pct', recovery);
+    } else {
+        frm.set_value('metal_recovery_pct', null);
+    }
 }

@@ -2,7 +2,39 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Packing Batch", {
+	onload(frm) {
+		set_reference_filters(frm);
+		// Auto-generate packing_batch_id for new documents
+		if (frm.is_new() && !frm.doc.packing_batch_id) {
+			frappe.call({
+				method: 'swynix_mes.swynix_mes.doctype.packing_batch.packing_batch.generate_packing_batch_id',
+				callback(r) {
+					if (r.message) {
+						frm.set_value('packing_batch_id', r.message);
+					}
+				}
+			});
+		}
+		// Auto-fill operator with logged-in user for new documents
+		if (frm.is_new() && !frm.doc.operator) {
+			frm.set_value('operator', frappe.session.user);
+		}
+		// Set operator field as readonly
+		frm.set_df_property('operator', 'read_only', 1);
+	},
+	operator(frm) {
+		// Prevent operator from being changed - always reset to logged-in user
+		if (frm.doc.operator !== frappe.session.user) {
+			frm.set_value('operator', frappe.session.user);
+		}
+	},
 	refresh(frm) {
+		// Ensure operator is always set to logged-in user and readonly
+		if (frm.is_new() && !frm.doc.operator) {
+			frm.set_value('operator', frappe.session.user);
+		}
+		frm.set_df_property('operator', 'read_only', 1);
+		
 		set_reference_filters(frm);
 
 		if (!frm.is_new()) {
@@ -10,10 +42,6 @@ frappe.ui.form.on("Packing Batch", {
 				load_items_from_wip(frm);
 			});
 		}
-	},
-
-	onload(frm) {
-		set_reference_filters(frm);
 	},
 });
 

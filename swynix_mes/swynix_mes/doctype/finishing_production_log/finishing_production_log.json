@@ -16,6 +16,7 @@
   "timing_and_output_section",
   "end_time",
   "start_time",
+  "duration_mins",
   "total_output_qty",
   "uom"
  ],
@@ -61,7 +62,8 @@
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "shift",
@@ -85,6 +87,12 @@
    "fieldtype": "Datetime",
    "label": "Start Time",
    "reqd": 1
+  },
+  {
+   "fieldname": "duration_mins",
+   "fieldtype": "Float",
+   "label": "Duration (mins)",
+   "read_only": 1
   },
   {
    "fieldname": "total_output_qty",

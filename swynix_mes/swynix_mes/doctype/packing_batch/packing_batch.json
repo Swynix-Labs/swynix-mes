@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "packing_batch_id",
+ "search_fields": "packing_batch_id",
  "creation": "2025-11-27 06:54:30.507552",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -29,7 +32,8 @@
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "packing_batch_id",

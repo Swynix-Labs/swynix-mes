@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "shift_name",
+ "search_fields": "shift_name",
  "creation": "2025-11-28 18:01:49.161428",
  "doctype": "DocType",
  "engine": "InnoDB",

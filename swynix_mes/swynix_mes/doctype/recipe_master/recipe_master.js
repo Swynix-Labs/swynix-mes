@@ -2,6 +2,20 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Recipe Master', {
+    onload(frm) {
+        // Auto-generate recipe_id for new documents
+        if (frm.is_new() && !frm.doc.recipe_id) {
+            frappe.call({
+                method: 'swynix_mes.swynix_mes.doctype.recipe_master.recipe_master.generate_recipe_id',
+                callback(r) {
+                    if (r.message) {
+                        frm.set_value('recipe_id', r.message);
+                    }
+                }
+            });
+        }
+    },
+
     validate(frm) {
         let total_ratio = 0;
 

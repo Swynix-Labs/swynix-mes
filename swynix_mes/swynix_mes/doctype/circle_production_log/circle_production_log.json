@@ -40,7 +40,8 @@
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "shift",

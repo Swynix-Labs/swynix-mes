@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "recipe_name",
+ "search_fields": "recipe_id,recipe_name",
  "creation": "2025-11-27 06:20:03.491720",
  "doctype": "DocType",
  "engine": "InnoDB",

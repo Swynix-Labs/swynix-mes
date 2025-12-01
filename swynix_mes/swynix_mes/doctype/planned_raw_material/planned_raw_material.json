@@ -25,6 +25,7 @@
    "in_list_view": 1,
    "label": "Item",
    "options": "Item",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -32,6 +33,7 @@
    "fieldtype": "Select",
    "label": "Source Type",
    "options": "Scrap\nIngot\nRejects\nReturns",
+   "read_only": 1,
    "reqd": 1,
    "sort_options": 1
   },

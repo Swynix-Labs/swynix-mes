@@ -38,3 +38,25 @@ def load_items_from_source(source_doctype: str, source_name: str):
 				break
 
 	return {"items": items}
+
+
+@frappe.whitelist()
+def generate_packing_batch_id():
+	"""Generate unique Packing Batch ID in format PACK-####"""
+	prefix = "PACK"
+	# Get max existing number
+	last_id = frappe.db.sql("""
+		SELECT packing_batch_id 
+		FROM `tabPacking Batch` 
+		WHERE packing_batch_id LIKE %s 
+		ORDER BY CAST(SUBSTRING_INDEX(packing_batch_id, '-', -1) AS UNSIGNED) DESC 
+		LIMIT 1
+	""", (f"{prefix}-%",), as_dict=True)
+	
+	if last_id and last_id[0].get("packing_batch_id"):
+		last_num = int(last_id[0]["packing_batch_id"].split("-")[1])
+		new_num = last_num + 1
+	else:
+		new_num = 1
+	
+	return f"{prefix}-{new_num:04d}"

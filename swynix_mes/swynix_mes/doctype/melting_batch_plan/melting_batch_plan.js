@@ -15,6 +15,17 @@ frappe.ui.form.on('Melting Batch Plan', {
     onload(frm) {
         set_recipe_filter(frm);
         set_recipe_query(frm);
+        // Auto-generate batch_plan_id for new documents
+        if (frm.is_new() && !frm.doc.batch_plan_id) {
+            frappe.call({
+                method: 'swynix_mes.swynix_mes.doctype.melting_batch_plan.melting_batch_plan.generate_batch_plan_id',
+                callback(r) {
+                    if (r.message) {
+                        frm.set_value('batch_plan_id', r.message);
+                    }
+                }
+            });
+        }
     },
 
     // When Alloy Grade changes, re-apply filter for recipes

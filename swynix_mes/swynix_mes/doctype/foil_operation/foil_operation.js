@@ -14,6 +14,17 @@ frappe.ui.form.on("Foil Operation", {
 
 	onload(frm) {
 		set_reel_query(frm);
+		// Auto-generate foil_operation_id for new documents
+		if (frm.is_new() && !frm.doc.foil_operation_id) {
+			frappe.call({
+				method: 'swynix_mes.swynix_mes.doctype.foil_operation.foil_operation.generate_foil_operation_id',
+				callback(r) {
+					if (r.message) {
+						frm.set_value('foil_operation_id', r.message);
+					}
+				}
+			});
+		}
 	},
 
 	reel(frm) {

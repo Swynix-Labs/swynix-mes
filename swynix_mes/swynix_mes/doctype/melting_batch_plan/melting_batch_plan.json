@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "batch_plan_id",
+ "search_fields": "batch_plan_id",
  "creation": "2025-11-28 18:51:29.455928",
  "doctype": "DocType",
  "engine": "InnoDB",

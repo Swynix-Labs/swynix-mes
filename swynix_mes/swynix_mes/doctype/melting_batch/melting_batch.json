@@ -16,16 +16,17 @@
   "planned_melt_weight",
   "heat_number",
   "batch_status_note",
+  "section_break_87gjhd",
+  "charged_materials",
   "tab_3_tab",
   "start_time",
   "end_time",
+  "duration_mins",
   "operator",
   "status",
   "column_break_vsuj",
   "is_deviation",
   "deviation_reason",
-  "tab_4_tab",
-  "charged_materials",
   "parameters_and_outputs_tab",
   "parameter_log",
   "tab_5_tab",
@@ -123,6 +124,16 @@
    "label": "Batch Status Note"
   },
   {
+   "fieldname": "section_break_87gjhd",
+   "fieldtype": "Section Break",
+   "label": "Charged Materials"
+  },
+  {
+   "fieldname": "charged_materials",
+   "fieldtype": "Table",
+   "options": "Planned Raw Material"
+  },
+  {
    "fieldname": "start_time",
    "fieldtype": "Datetime",
    "label": "Start Time"
@@ -133,10 +144,17 @@
    "label": "End Time"
   },
   {
+   "fieldname": "duration_mins",
+   "fieldtype": "Float",
+   "label": "Duration (mins)",
+   "read_only": 1
+  },
+  {
    "fieldname": "operator",
    "fieldtype": "Link",
    "label": "Operator",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_vsuj",
@@ -149,21 +167,10 @@
    "label": "Is Deviation from Plan"
   },
   {
-   "depends_on": "doc.is_deviation == 1",
+   "depends_on": "eval:doc.is_deviation == 1",
    "fieldname": "deviation_reason",
    "fieldtype": "Small Text",
    "label": "Deviation Reason"
-  },
-  {
-   "fieldname": "tab_4_tab",
-   "fieldtype": "Tab Break",
-   "label": "Charged Materials"
-  },
-  {
-   "fieldname": "charged_materials",
-   "fieldtype": "Table",
-   "label": "Charged Materials",
-   "options": "Planned Raw Material"
   },
   {
    "fieldname": "parameters_and_outputs_tab",
@@ -202,16 +209,16 @@
    "label": "Skull / Losses (kg)"
   },
   {
-   "description": "Can be sum of Actual Qty from Charged Materials table by script.",
    "fieldname": "total_charged",
    "fieldtype": "Float",
-   "label": "Total Charged (kg)"
+   "label": "Total Charged (kg)",
+   "read_only": 1
   },
   {
-   "description": "(Metal to Casting / Total Charged) * 100 - server script",
    "fieldname": "metal_recovery_pct",
    "fieldtype": "Float",
-   "label": "Metal Recovery %"
+   "label": "Metal Recovery %",
+   "read_only": 1
   },
   {
    "fieldname": "energy_kwh",

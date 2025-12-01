@@ -1,6 +1,9 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
+ "title_field": "reel_id",
+ "search_fields": "reel_id",
  "creation": "2025-11-27 07:13:58.865626",
  "doctype": "DocType",
  "engine": "InnoDB",
