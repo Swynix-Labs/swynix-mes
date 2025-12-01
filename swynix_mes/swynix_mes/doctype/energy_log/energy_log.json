@@ -4,12 +4,13 @@
  "creation": "2025-11-27 04:15:48.143097",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "context_section",
-  "coil",
-  "department",
-  "workstation",
-  "meta_section",
+  "field_order": [
+   "context_section",
+   "coil",
+   "casting_operation",
+   "department",
+   "workstation",
+   "meta_section",
   "logged_by",
   "logged_on",
   "shift",
@@ -35,6 +36,12 @@
    "fieldtype": "Link",
    "label": "Coil",
    "options": "Coil"
+  },
+  {
+   "fieldname": "casting_operation",
+   "fieldtype": "Link",
+   "label": "Casting Operation",
+   "options": "Casting Operation"
   },
   {
    "fieldname": "department",

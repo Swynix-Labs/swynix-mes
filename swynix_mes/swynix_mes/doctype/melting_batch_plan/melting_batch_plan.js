@@ -3,6 +3,11 @@
 
 frappe.ui.form.on('Melting Batch Plan', {
     refresh: function(frm) {
+        // Hide Update button if document is submitted
+        if (frm.doc.docstatus === 1) {
+            frm.page.clear_primary_action();
+        }
+        
         set_recipe_filter(frm);
         // Add "Fetch Materials" button
         if (frm.doc.recipe) {

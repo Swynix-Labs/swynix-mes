@@ -29,6 +29,11 @@ frappe.ui.form.on("Packing Batch", {
 		}
 	},
 	refresh(frm) {
+		// Hide Update button if document is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.page.clear_primary_action();
+		}
+		
 		// Ensure operator is always set to logged-in user and readonly
 		if (frm.is_new() && !frm.doc.operator) {
 			frm.set_value('operator', frappe.session.user);

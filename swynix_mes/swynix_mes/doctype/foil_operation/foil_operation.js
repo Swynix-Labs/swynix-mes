@@ -3,6 +3,11 @@
 
 frappe.ui.form.on("Foil Operation", {
 	refresh(frm) {
+		// Hide Update button if document is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.page.clear_primary_action();
+		}
+		
 		set_reel_query(frm);
 
 		if (!frm.is_new()) {

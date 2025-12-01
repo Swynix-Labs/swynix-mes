@@ -15,4 +15,10 @@ frappe.ui.form.on("Caster QC Inspection", {
 			});
 		}
 	},
+	refresh(frm) {
+		// Hide Update button if document is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.page.clear_primary_action();
+		}
+	},
 });

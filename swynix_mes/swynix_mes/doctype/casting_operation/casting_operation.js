@@ -20,6 +20,27 @@ frappe.ui.form.on('Casting Operation', {
         }
         // Set operator field as readonly
         frm.set_df_property('operator', 'read_only', 1);
+        
+        // Fetch total_cast_weight from melting batch on load
+        if (frm.doc.melting_batch) {
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'Melting Batch',
+                    name: frm.doc.melting_batch
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Set value even if it's 0
+                        let metal_to_casting = parseFloat(r.message.metal_to_casting) || 0;
+                        frm.set_value('total_cast_weight', metal_to_casting);
+                    }
+                }
+            });
+        } else if (!frm.doc.total_cast_weight) {
+            // Set default to 0 if no melting batch selected
+            frm.set_value('total_cast_weight', 0);
+        }
     },
     operator(frm) {
         // Prevent operator from being changed - always reset to logged-in user
@@ -27,15 +48,63 @@ frappe.ui.form.on('Casting Operation', {
             frm.set_value('operator', frappe.session.user);
         }
     },
+    melting_batch(frm) {
+        // Fetch metal_to_casting from melting batch and set as total_cast_weight
+        if (frm.doc.melting_batch) {
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'Melting Batch',
+                    name: frm.doc.melting_batch
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Set value even if it's 0
+                        let metal_to_casting = parseFloat(r.message.metal_to_casting) || 0;
+                        frm.set_value('total_cast_weight', metal_to_casting);
+                    }
+                }
+            });
+        } else {
+            frm.set_value('total_cast_weight', 0);
+        }
+    },
     refresh(frm) {
+        // Hide Update button if document is submitted
+        if (frm.doc.docstatus === 1) {
+            frm.page.clear_primary_action();
+        }
+        
         // Ensure operator is always set to logged-in user and readonly
         if (frm.is_new() && !frm.doc.operator) {
             frm.set_value('operator', frappe.session.user);
         }
         frm.set_df_property('operator', 'read_only', 1);
-    },
-
-    refresh(frm) {
+        
+        // Fetch total_cast_weight from melting batch (always sync since it's readonly)
+        if (frm.doc.melting_batch) {
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'Melting Batch',
+                    name: frm.doc.melting_batch
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Set value even if it's 0
+                        let metal_to_casting = parseFloat(r.message.metal_to_casting) || 0;
+                        frm.set_value('total_cast_weight', metal_to_casting);
+                    }
+                }
+            });
+        } else if (!frm.doc.total_cast_weight) {
+            // Set default to 0 if no melting batch selected
+            frm.set_value('total_cast_weight', 0);
+        }
+        
+        // Ensure total_cast_weight field is visible
+        frm.set_df_property('total_cast_weight', 'hidden', 0);
+        
         // Clean old buttons
         frm.clear_custom_buttons();
 
@@ -93,6 +162,11 @@ frappe.ui.form.on('Casting Operation', {
                 frm.duration_interval = null;
             }
         }
+        
+        // Load connections (only if document is saved)
+        if (!frm.is_new()) {
+            load_connections(frm);
+        }
     },
 
     // Whenever these fields change, recompute yield
@@ -116,6 +190,13 @@ frappe.ui.form.on('Casting Operation', {
     validate(frm) {
         calculate_duration(frm);
         calculate_yield(frm);
+    },
+    
+    // Reload connections after save
+    after_save(frm) {
+        if (!frm.is_new()) {
+            load_connections(frm);
+        }
     }
 });
 
@@ -146,11 +227,79 @@ function start_casting(frm) {
         return;
     }
 
-    frm.set_value('start_time', frappe.datetime.now_datetime());
-    frm.set_value('status', 'In Progress');
+    // Check if current time falls within any active shift
+    let current_datetime = frappe.datetime.now_datetime();
+    let current_time_str = moment(current_datetime).format('HH:mm:ss');
+    
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Shift Master',
+            filters: {
+                is_active: 1
+            },
+            fields: ['name', 'shift_name', 'start_time', 'end_time']
+        },
+        callback: function(r) {
+            if (!r.message || r.message.length === 0) {
+                frappe.msgprint({
+                    title: __('No Active Shift Found'),
+                    indicator: 'red',
+                    message: __('No active shift found in Shift Master. Please create an active shift before starting casting.')
+                });
+                return;
+            }
 
-    frm.save().then(() => {
-        frappe.msgprint(__('Casting started.'));
+            let timeInShift = false;
+            let matchedShift = null;
+
+            r.message.forEach(shift => {
+                if (shift.start_time && shift.end_time) {
+                    // Parse time strings (format: HH:mm:ss or HH:mm)
+                    let shiftStartStr = shift.start_time;
+                    let shiftEndStr = shift.end_time;
+                    
+                    // Ensure time format is HH:mm:ss
+                    if (shiftStartStr.length === 5) shiftStartStr += ':00';
+                    if (shiftEndStr.length === 5) shiftEndStr += ':00';
+                    
+                    let shiftStart = moment(shiftStartStr, 'HH:mm:ss');
+                    let shiftEnd = moment(shiftEndStr, 'HH:mm:ss');
+                    let current = moment(current_time_str, 'HH:mm:ss');
+
+                    // Handle shifts that span midnight (e.g., 22:00 to 06:00)
+                    if (shiftEnd.isBefore(shiftStart) || shiftEnd.isSame(shiftStart)) {
+                        // Shift spans midnight - add 1 day to end time for comparison
+                        shiftEnd.add(1, 'day');
+                        if (current.isBefore(shiftStart)) {
+                            current.add(1, 'day');
+                        }
+                    }
+
+                    if (current.isSameOrAfter(shiftStart) && current.isBefore(shiftEnd)) {
+                        timeInShift = true;
+                        matchedShift = shift;
+                    }
+                }
+            });
+
+            if (!timeInShift) {
+                frappe.msgprint({
+                    title: __('Shift Validation Failed'),
+                    indicator: 'red',
+                    message: __('Current time does not fall within any active shift. Please start casting during an active shift period.')
+                });
+                return;
+            }
+
+            // All validations passed, start casting
+            frm.set_value('start_time', current_datetime);
+            frm.set_value('status', 'In Progress');
+
+            frm.save().then(() => {
+                frappe.msgprint(__('Casting started.'));
+            });
+        }
     });
 }
 
@@ -293,4 +442,129 @@ function make_energy_log_from_cast(frm) {
     };
 
     frappe.new_doc('Energy Log');
+}
+
+/**
+ * Load all connections (Coils, Dross Logs, Energy Logs) for this Casting Operation
+ */
+function load_connections(frm) {
+    if (!frm.doc.name) return;
+    
+    load_coils(frm);
+    load_dross_logs(frm);
+    load_energy_logs(frm);
+}
+
+/**
+ * Load and display Coils linked to this Casting Operation (only submitted)
+ */
+function load_coils(frm) {
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Coil',
+            filters: {
+                casting_operation: frm.doc.name,
+                docstatus: 1  // Only submitted coils
+            },
+            fields: ['name', 'coil_id'],
+            order_by: 'creation desc'
+        },
+        callback: function(r) {
+            let html = '';
+            if (r.message && r.message.length > 0) {
+                html = '<table class="table table-bordered" style="width: 100%;">';
+                html += '<thead><tr><th>ID</th><th>Name</th></tr></thead>';
+                html += '<tbody>';
+                r.message.forEach(coil => {
+                    html += `<tr>
+                        <td>${coil.coil_id || ''}</td>
+                        <td><a href="#Form/Coil/${coil.name}" onclick="frappe.set_route('Form', 'Coil', '${coil.name}'); return false;">${coil.name}</a></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            } else {
+                html = '<p class="text-muted">No submitted coils found for this casting operation.</p>';
+            }
+            frm.set_df_property('coils_html', 'options', html);
+        }
+    });
+}
+
+/**
+ * Load and display Dross Logs linked to this Casting Operation (only submitted)
+ */
+function load_dross_logs(frm) {
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Dross Log',
+            filters: {
+                casting_operation: frm.doc.name,
+                docstatus: 1  // Only submitted logs
+            },
+            fields: ['name', 'dross_id', 'dross_qty', 'dross_quality'],
+            order_by: 'creation desc'
+        },
+        callback: function(r) {
+            let html = '';
+            if (r.message && r.message.length > 0) {
+                html = '<table class="table table-bordered" style="width: 100%;">';
+                html += '<thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Quality</th></tr></thead>';
+                html += '<tbody>';
+                r.message.forEach(log => {
+                    html += `<tr>
+                        <td>${log.dross_id || ''}</td>
+                        <td><a href="#Form/Dross Log/${log.name}" onclick="frappe.set_route('Form', 'Dross Log', '${log.name}'); return false;">${log.name}</a></td>
+                        <td>${log.dross_qty || 0}</td>
+                        <td>${log.dross_quality || ''}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            } else {
+                html = '<p class="text-muted">No submitted dross logs found for this casting operation.</p>';
+            }
+            frm.set_df_property('dross_logs_html', 'options', html);
+        }
+    });
+}
+
+/**
+ * Load and display Energy Logs linked to this Casting Operation (only submitted)
+ */
+function load_energy_logs(frm) {
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Energy Log',
+            filters: {
+                casting_operation: frm.doc.name,
+                docstatus: 1  // Only submitted logs
+            },
+            fields: ['name', 'utility_type', 'consumption', 'unit', 'from_time', 'to_time'],
+            order_by: 'creation desc'
+        },
+        callback: function(r) {
+            let html = '';
+            if (r.message && r.message.length > 0) {
+                html = '<table class="table table-bordered" style="width: 100%;">';
+                html += '<thead><tr><th>Name</th><th>Utility Type</th><th>Consumption</th><th>Unit</th><th>From Time</th><th>To Time</th></tr></thead>';
+                html += '<tbody>';
+                r.message.forEach(log => {
+                    html += `<tr>
+                        <td><a href="#Form/Energy Log/${log.name}" onclick="frappe.set_route('Form', 'Energy Log', '${log.name}'); return false;">${log.name}</a></td>
+                        <td>${log.utility_type || ''}</td>
+                        <td>${log.consumption || 0}</td>
+                        <td>${log.unit || ''}</td>
+                        <td>${log.from_time ? frappe.datetime.str_to_user(log.from_time) : ''}</td>
+                        <td>${log.to_time ? frappe.datetime.str_to_user(log.to_time) : ''}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            } else {
+                html = '<p class="text-muted">No submitted energy logs found for this casting operation.</p>';
+            }
+            frm.set_df_property('energy_logs_html', 'options', html);
+        }
+    });
 }

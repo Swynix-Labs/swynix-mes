@@ -2,7 +2,24 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Coil', {
+    onload(frm) {
+        // Auto-generate coil_id for new documents if empty
+        if (frm.is_new() && !frm.doc.coil_id) {
+            generate_coil_id(frm);
+        }
+        
+        // Add generate button next to coil_id field
+        setup_coil_id_generate_button(frm);
+    },
+    
     refresh(frm) {
+        // Hide Update button if document is submitted
+        if (frm.doc.docstatus === 1) {
+            frm.page.clear_primary_action();
+        }
+        
+        // Setup generate button for coil_id field
+        setup_coil_id_generate_button(frm);
 
         // Start QC Button
         if (!frm.is_new() && frm.doc.qc_status === "Pending") {
@@ -52,6 +69,15 @@ frappe.ui.form.on('Coil', {
             frappe.new_doc('Slitting Batch');
         }, __('Next Operations'));
     },
+    
+    coil_id(frm) {
+        // Remove generate button if coil_id is filled
+        if (frm.doc.coil_id) {
+            remove_coil_id_generate_button(frm);
+        } else {
+            setup_coil_id_generate_button(frm);
+        }
+    },
 
     // Autofill Data from Casting Operation
     casting_operation(frm) {
@@ -76,3 +102,53 @@ frappe.ui.form.on('Coil', {
         }
     }
 });
+
+// Function to generate coil_id
+function generate_coil_id(frm) {
+    frappe.call({
+        method: 'swynix_mes.swynix_mes.doctype.coil.coil.generate_coil_id',
+        callback(r) {
+            if (r.message) {
+                frm.set_value('coil_id', r.message);
+            }
+        }
+    });
+}
+
+// Setup generate button next to coil_id field
+function setup_coil_id_generate_button(frm) {
+    // Remove existing button if any
+    remove_coil_id_generate_button(frm);
+    
+    // Only show button if coil_id is empty
+    if (!frm.doc.coil_id && frm.is_new()) {
+        let field = frm.get_field('coil_id');
+        if (field && field.$input) {
+            let $wrapper = field.$input.parent();
+            if (!$wrapper.find('.generate-coil-id-btn').length) {
+                let $btn = $('<button>')
+                    .addClass('btn btn-sm btn-secondary generate-coil-id-btn')
+                    .html('<i class="fa fa-refresh"></i>')
+                    .attr('title', __('Generate Coil ID'))
+                    .css({
+                        'margin-left': '5px',
+                        'padding': '4px 8px'
+                    })
+                    .on('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        generate_coil_id(frm);
+                    });
+                $wrapper.append($btn);
+            }
+        }
+    }
+}
+
+// Remove generate button
+function remove_coil_id_generate_button(frm) {
+    let field = frm.get_field('coil_id');
+    if (field && field.$input) {
+        field.$input.parent().find('.generate-coil-id-btn').remove();
+    }
+}

@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "format:MELT-{#####}",
+ "autoname": "format:CAST-{#####}",
  "creation": "2025-11-29 15:42:56.627805",
  "default_view": "List",
  "doctype": "DocType",
@@ -36,10 +36,17 @@
   "dross_weight",
   "return_metal_weight",
   "yield_percent",
-  "parameters_and_outputs_tab",
-  "parameter_log",
-  "amended_from"
- ],
+   "parameters_and_outputs_tab",
+   "parameter_log",
+   "connections_tab",
+   "coils_section",
+   "coils_html",
+   "dross_logs_section",
+   "dross_logs_html",
+   "energy_logs_section",
+   "energy_logs_html",
+   "amended_from"
+  ],
  "fields": [
   {
    "fieldname": "section_break_87ge",
@@ -165,6 +172,41 @@
    "options": "Parameter Log"
   },
   {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections"
+  },
+  {
+   "fieldname": "coils_section",
+   "fieldtype": "Section Break",
+   "label": "Coils"
+  },
+  {
+   "fieldname": "coils_html",
+   "fieldtype": "HTML",
+   "label": "Coils"
+  },
+  {
+   "fieldname": "dross_logs_section",
+   "fieldtype": "Section Break",
+   "label": "Dross Logs"
+  },
+  {
+   "fieldname": "dross_logs_html",
+   "fieldtype": "HTML",
+   "label": "Dross Logs"
+  },
+  {
+   "fieldname": "energy_logs_section",
+   "fieldtype": "Section Break",
+   "label": "Energy Logs"
+  },
+  {
+   "fieldname": "energy_logs_html",
+   "fieldtype": "HTML",
+   "label": "Energy Logs"
+  },
+  {
    "fieldname": "tab_5_tab",
    "fieldtype": "Tab Break",
    "label": "Output Summary"
@@ -198,9 +240,11 @@
    "read_only": 1
   },
   {
+   "default": "0",
    "fieldname": "total_cast_weight",
    "fieldtype": "Float",
    "label": "Total Cast Weight (kg)",
+   "read_only": 1,
    "reqd": 1
   },
   {

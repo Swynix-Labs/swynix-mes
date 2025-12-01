@@ -2,6 +2,12 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Recipe Master', {
+    refresh(frm) {
+        // Hide Update button if document is submitted
+        if (frm.doc.docstatus === 1) {
+            frm.page.clear_primary_action();
+        }
+    },
     onload(frm) {
         // Auto-generate recipe_id for new documents
         if (frm.is_new() && !frm.doc.recipe_id) {

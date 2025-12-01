@@ -196,7 +196,8 @@
   {
    "fieldname": "metal_to_casting",
    "fieldtype": "Float",
-   "label": "Metal to Casting (kg)"
+   "label": "Metal to Casting (kg)",
+   "reqd": 1
   },
   {
    "fieldname": "dross_qty",

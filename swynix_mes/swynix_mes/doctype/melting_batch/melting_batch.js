@@ -7,6 +7,7 @@ frappe.ui.form.on('Melting Batch', {
         if (frm.is_new() && !frm.doc.operator) {
             frm.set_value('operator', frappe.session.user);
         }
+
         // Set operator field as readonly
         frm.set_df_property('operator', 'read_only', 1);
     },
@@ -30,6 +31,12 @@ frappe.ui.form.on('Melting Batch', {
         calculate_total_charged(frm);
     },
     refresh(frm) {
+        // Hide Update button if document is submitted
+        if (frm.doc.docstatus === 1) {
+            frm.page.clear_primary_action();
+            frm.remove_custom_button('Update')
+        }
+        
         // Ensure operator is always set to logged-in user and readonly
         if (frm.is_new() && !frm.doc.operator) {
             frm.set_value('operator', frappe.session.user);
@@ -113,6 +120,13 @@ frappe.ui.form.on('Melting Batch', {
 
         // 3) Post-melting actions - when Completed
         if (frm.doc.status === 'Completed') {
+            // Get PLC - show before submit (when status is Completed but docstatus is 0)
+            if (!frm.is_new() && frm.doc.docstatus === 0) {
+                frm.add_custom_button(__('Get PLC'), () => {
+                    // Placeholder - no action for now
+                }, __('Operations'));
+            }
+
             // Start Casting (create Casting Operation) - only show after document is submitted
             // docstatus === 1 means document is submitted (not just saved)
             if (!frm.is_new() && frm.doc.docstatus === 1) {
@@ -120,11 +134,6 @@ frappe.ui.form.on('Melting Batch', {
                     create_casting_operation(frm);
                 }, __('Next Step')).addClass('btn-primary');
             }
-
-            // Get PLC
-            frm.add_custom_button(__('Get PLC'), () => {
-                // Placeholder - no action for now
-            }, __('Next Step'));
 
             // Dross Log
             frm.add_custom_button(__('Add Dross Log'), () => {
@@ -148,13 +157,6 @@ frappe.ui.form.on('Melting Batch', {
         frm.add_custom_button(__('Report Breakdown'), () => {
             create_breakdown_log(frm);
         }, __('Logs'));
-
-        // Approve Deviation - if header has is_deviation checked
-        if (frm.doc.is_deviation && !frm.doc.deviation_approved) {
-            frm.add_custom_button(__('Approve Deviation'), () => {
-                approve_deviation(frm);
-            }, __('Supervisor')).addClass('btn-success');
-        }
 
         // Print Heat Slip
         frm.add_custom_button(__('Print Heat Slip'), () => {
@@ -279,21 +281,6 @@ function create_breakdown_log(frm) {
 
         frappe.set_route('Form', 'Breakdown Log', doc.name);
     });
-}
-
-// Helper: Approve Deviation (Supervisor action)
-function approve_deviation(frm) {
-    frappe.confirm(
-        __('Are you sure you want to approve this deviation?'),
-        () => {
-            frm.set_value('deviation_approved', 1);
-            frm.set_value('deviation_approved_by', frappe.session.user);
-            frm.save().then(() => {
-                frappe.msgprint(__('Deviation approved.'));
-                frm.reload_doc();
-            });
-        }
-    );
 }
 
 // Handle Planned Raw Material child table

@@ -4,12 +4,13 @@
  "creation": "2025-11-27 04:04:57.355455",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "header_section",
-  "dross_id",
-  "furnace_no",
-  "melting_batch",
-  "meta_section",
+  "field_order": [
+   "header_section",
+   "dross_id",
+   "furnace_no",
+   "melting_batch",
+   "casting_operation",
+   "meta_section",
   "logged_by",
   "logged_on",
   "remarks",
@@ -45,6 +46,12 @@
    "fieldtype": "Link",
    "label": "Melting Batch",
    "options": "Melting Batch"
+  },
+  {
+   "fieldname": "casting_operation",
+   "fieldtype": "Link",
+   "label": "Casting Operation",
+   "options": "Casting Operation"
   },
   {
    "fieldname": "meta_section",
