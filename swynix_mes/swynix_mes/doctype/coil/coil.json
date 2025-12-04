@@ -1,0 +1,378 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-12-04 22:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "identification_section",
+  "naming_series",
+  "coil_id",
+  "coil_role",
+  "mother_coil",
+  "column_break_id",
+  "casting_plan",
+  "melting_batch",
+  "heat_number",
+  "batch_number",
+  "customer_coil_no",
+  "sb_specs",
+  "alloy",
+  "temper",
+  "product_item",
+  "column_break_specs",
+  "width_mm",
+  "thickness_mm",
+  "length_m",
+  "weight_mt",
+  "column_break_specs2",
+  "inner_dia_mm",
+  "outer_dia_mm",
+  "cast_datetime",
+  "sb_status",
+  "coil_status",
+  "current_stage",
+  "column_break_status",
+  "warehouse",
+  "location_note",
+  "column_break_status2",
+  "caster",
+  "furnace",
+  "sb_qc",
+  "qc_status",
+  "qc_grade",
+  "column_break_qc",
+  "quality_inspection",
+  "qc_remarks",
+  "sb_audit",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "identification_section",
+   "fieldtype": "Section Break",
+   "label": "Identification"
+  },
+  {
+   "default": "COIL-.YYYY.-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "COIL-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "description": "Will show the same as docname; can be overridden later if needed.",
+   "fieldname": "coil_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Coil ID (Tag)",
+   "read_only": 1
+  },
+  {
+   "default": "Mother",
+   "fieldname": "coil_role",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Coil Role",
+   "options": "Mother\nChild\nScrap\nReturn",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.coil_role=='Child'",
+   "description": "For child coils, reference to original mother coil.",
+   "fieldname": "mother_coil",
+   "fieldtype": "Link",
+   "label": "Mother Coil",
+   "options": "Coil"
+  },
+  {
+   "fieldname": "column_break_id",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Casting plan that produced this coil.",
+   "fieldname": "casting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "PPC Casting Plan",
+   "options": "PPC Casting Plan"
+  },
+  {
+   "description": "Melting batch from which this coil was finally cast (optional).",
+   "fieldname": "melting_batch",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Melting Batch",
+   "options": "Melting Batch"
+  },
+  {
+   "fieldname": "heat_number",
+   "fieldtype": "Data",
+   "label": "Heat Number"
+  },
+  {
+   "fieldname": "batch_number",
+   "fieldtype": "Data",
+   "label": "Casting Batch No."
+  },
+  {
+   "description": "Customer-provided coil ID if applicable.",
+   "fieldname": "customer_coil_no",
+   "fieldtype": "Data",
+   "label": "Customer Coil No."
+  },
+  {
+   "fieldname": "sb_specs",
+   "fieldtype": "Section Break",
+   "label": "Coil Specifications"
+  },
+  {
+   "description": "Alloy item (Item Group = Alloy).",
+   "fieldname": "alloy",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Alloy",
+   "options": "Item"
+  },
+  {
+   "description": "Temper (H14, H24, O, etc.)",
+   "fieldname": "temper",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Temper",
+   "options": "Temper"
+  },
+  {
+   "description": "Finished / semi-finished product code (Item Group = Product).",
+   "fieldname": "product_item",
+   "fieldtype": "Link",
+   "label": "Product Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_specs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "width_mm",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Width (mm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "thickness_mm",
+   "fieldtype": "Float",
+   "label": "Thickness (mm)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "length_m",
+   "fieldtype": "Float",
+   "label": "Length (m)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "weight_mt",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight (MT)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_specs2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inner_dia_mm",
+   "fieldtype": "Float",
+   "label": "Inner Dia (mm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "outer_dia_mm",
+   "fieldtype": "Float",
+   "label": "Outer Dia (mm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "cast_datetime",
+   "fieldtype": "Datetime",
+   "label": "Cast Date & Time"
+  },
+  {
+   "fieldname": "sb_status",
+   "fieldtype": "Section Break",
+   "label": "Status & Location"
+  },
+  {
+   "default": "Cast",
+   "fieldname": "coil_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Coil Status",
+   "options": "Draft\nCast\nWIP\nHold\nRejected\nScrap\nConsumed\nDispatched\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "current_stage",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Current Stage",
+   "options": "\nCasting\nHolder\nCRM\nFoil Mill\nCTL\nSlitting\nPacking\nDispatch\nOther"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Current Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "description": "Area / Bay / Rack, etc.",
+   "fieldname": "location_note",
+   "fieldtype": "Small Text",
+   "label": "Location Note"
+  },
+  {
+   "fieldname": "column_break_status2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Caster that produced this coil.",
+   "fieldname": "caster",
+   "fieldtype": "Link",
+   "label": "Caster",
+   "options": "Workstation"
+  },
+  {
+   "description": "Furnace used for this coil (if needed).",
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "label": "Furnace",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "sb_qc",
+   "fieldtype": "Section Break",
+   "label": "Quality & Grade"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "qc_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "QC Status",
+   "options": "Pending\nPassed\nFailed\nHold"
+  },
+  {
+   "description": "Final QC grade.",
+   "fieldname": "qc_grade",
+   "fieldtype": "Select",
+   "label": "Grade",
+   "options": "\nA\nB\nC\nScrap"
+  },
+  {
+   "fieldname": "column_break_qc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quality_inspection",
+   "fieldtype": "Link",
+   "label": "Quality Inspection",
+   "options": "Quality Inspection"
+  },
+  {
+   "fieldname": "qc_remarks",
+   "fieldtype": "Small Text",
+   "label": "QC Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "sb_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "General Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Coil",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-04 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Coil",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "coil_id,alloy,coil_role,coil_status",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "coil_id",
+ "track_changes": 1
+}

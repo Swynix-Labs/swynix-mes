@@ -199,6 +199,11 @@ function fetch_events(start, end) {
 			let title = p.plan_type === "Downtime"
 				? `DT: ${p.downtime_type || ''}`
 				: `${p.product_item || ''} (${p.alloy || ''} / ${p.temper || ''})`;
+			
+			// Add furnace info if available
+			if (p.furnace && p.plan_type !== "Downtime") {
+				title += ` | F: ${p.furnace}`;
+			}
 
 			let color = p.plan_type === "Downtime" ? '#e74c3c' : '#2ecc71';
 
@@ -212,7 +217,8 @@ function fetch_events(start, end) {
 				extendedProps: {
 					docname: p.name,
 					plan_type: p.plan_type,
-					status: p.status
+					status: p.status,
+					furnace: p.furnace
 				}
 			};
 		});
@@ -250,6 +256,13 @@ function open_create_plan_dialog() {
 				options: 'Workstation',
 				reqd: 1,
 				default: current_caster
+			},
+			{
+				fieldname: 'furnace',
+				label: __('Furnace (Foundry)'),
+				fieldtype: 'Link',
+				options: 'Workstation',
+				description: __('Optional: select the melting furnace / foundry for this cast.')
 			},
 			{
 				fieldname: 'plan_type',
@@ -498,6 +511,11 @@ function open_create_plan_dialog() {
 	// Filter Caster field to Casting workstations
 	d.fields_dict.caster.get_query = function() {
 		return { filters: { workstation_type: 'Casting' } };
+	};
+
+	// Filter Furnace field to Foundry workstations
+	d.fields_dict.furnace.get_query = function() {
+		return { filters: { workstation_type: ['in', ['Foundry', 'Furnace', 'Melting Furnace']] } };
 	};
 
 	// Product Item: Item Group = Product

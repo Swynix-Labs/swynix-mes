@@ -449,6 +449,7 @@ def get_plan_for_range(caster, start, end):
 			"downtime_type",
 			"status",
 			"remarks",
+			"furnace",
 		],
 		order_by="start_datetime asc",
 	)
