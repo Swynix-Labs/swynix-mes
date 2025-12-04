@@ -7,6 +7,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+# Import status constants from API
+try:
+	from swynix_mes.swynix_mes.api.ppc_caster_kiosk import SHIFTABLE_STATUSES, LOCKED_STATUSES
+except ImportError:
+	# Fallback if import fails
+	SHIFTABLE_STATUSES = ["Draft", "Planned", "Released to Melting"]
+	LOCKED_STATUSES = ["In Process", "Completed"]
+
 
 class PPCCastingPlan(Document):
 	def validate(self):
@@ -88,8 +96,7 @@ class PPCCastingPlan(Document):
 		# Required fields for Casting
 		required_casting_fields = [
 			("product_item", "Product Item"),
-			("width_mm", "Width (mm)"),
-			("final_gauge_mm", "Final Gauge (mm)")
+			("alloy", "Alloy"),
 		]
 
 		for field, label in required_casting_fields:
@@ -107,9 +114,16 @@ class PPCCastingPlan(Document):
 					)
 				)
 
-		# Positive number validations
-		if self.width_mm and self.width_mm <= 0:
-			frappe.throw(_("Width (mm) must be greater than 0."))
+		# Positive number validations for planned parameters
+		if self.planned_width_mm and self.planned_width_mm <= 0:
+			frappe.throw(_("Planned Width (mm) must be greater than 0."))
+
+		if self.planned_gauge_mm and self.planned_gauge_mm <= 0:
+			frappe.throw(_("Planned Gauge (mm) must be greater than 0."))
+
+		# Positive number validations for final parameters
+		if self.final_width_mm and self.final_width_mm <= 0:
+			frappe.throw(_("Final Width (mm) must be greater than 0."))
 
 		if self.final_gauge_mm and self.final_gauge_mm <= 0:
 			frappe.throw(_("Final Gauge (mm) must be greater than 0."))
@@ -151,21 +165,80 @@ class PPCCastingPlan(Document):
 		if not self.downtime_type:
 			frappe.throw(_("Downtime Type is required for Downtime plans."))
 
-	def check_caster_overlap(self):
-		"""Check for overlapping plans on the same caster"""
+	def shift_future_plans(self):
+		"""
+		Shift future plans on the same caster forward to make room for this plan.
+
+		This is used by the PPC Caster Kiosk when inserting a new plan in the middle
+		of the schedule. We move all plans with start_datetime >= this plan's
+		start_datetime forward by this plan's duration.
+		"""
 		if not self.caster or not self.start_datetime or not self.end_datetime:
 			return
 
-		# Any plan (Casting or Downtime) on same caster, overlapping in time,
-		# except this document and Cancelled ones
-		overlap = frappe.db.sql(
+		# Duration of the new plan
+		duration = self.end_datetime - self.start_datetime
+		if duration.total_seconds() <= 0:
+			return
+
+		# Fetch all future plans for this caster (excluding Cancelled)
+		future_plans = frappe.get_all(
+			"PPC Casting Plan",
+			filters={
+				"caster": self.caster,
+				"status": ["!=", "Cancelled"],
+				"docstatus": ["<", 2],
+				"start_datetime": [">=", self.start_datetime],
+			},
+			fields=["name", "start_datetime", "end_datetime"],
+			order_by="start_datetime asc",
+		)
+
+		if not future_plans:
+			return
+
+		# Shift each plan forward by the duration of the new plan.
+		# We update via db.set_value to avoid triggering overlap validation
+		# on each shifted document; overall ordering and gaps are preserved.
+		for p in future_plans:
+			# Safety: skip self if somehow present
+			if p.name == (self.name or "New"):
+				continue
+
+			new_start = p.start_datetime + duration
+			new_end = p.end_datetime + duration
+
+			frappe.db.set_value(
+				"PPC Casting Plan",
+				p.name,
+				{
+					"start_datetime": new_start,
+					"end_datetime": new_end,
+				},
+				update_modified=True,
+			)
+
+	def check_caster_overlap(self):
+		"""
+		Check for overlapping plans on the same caster.
+		
+		Status-aware overlap checking:
+		- LOCKED plans (In Process / Completed) must NEVER overlap
+		- SHIFTABLE plans that start at/after this plan's start are being shifted, so allow overlap
+		- SHIFTABLE plans that start BEFORE this plan's start must not overlap
+		"""
+		if not self.caster or not self.start_datetime or not self.end_datetime:
+			return
+
+		# 1) Always check for overlaps with LOCKED plans (In Process / Completed)
+		locked_overlap = frappe.db.sql(
 			"""
-			SELECT name
+			SELECT name, status
 			FROM `tabPPC Casting Plan`
 			WHERE
 				name != %s
 				AND caster = %s
-				AND status != 'Cancelled'
+				AND status IN %s
 				AND docstatus < 2
 				AND (
 					(start_datetime <= %s AND end_datetime > %s) OR
@@ -177,6 +250,7 @@ class PPCCastingPlan(Document):
 			(
 				self.name or "New",
 				self.caster,
+				tuple(LOCKED_STATUSES),
 				self.start_datetime, self.start_datetime,
 				self.end_datetime, self.end_datetime,
 				self.start_datetime, self.end_datetime,
@@ -184,12 +258,55 @@ class PPCCastingPlan(Document):
 			as_dict=True
 		)
 
-		if overlap:
-			other = overlap[0].name
+		if locked_overlap:
+			other = locked_overlap[0]
+			frappe.throw(
+				_("Time slot overlaps with {0} plan <b>{1}</b> on this caster. "
+				  "Cannot overlap plans that are In Process or Completed.").format(
+					other.status, other.name
+				)
+			)
+
+		# 2) Check for overlaps with SHIFTABLE plans that start BEFORE this plan's start
+		# (We don't shift plans that start before, so they must not overlap)
+		shiftable_overlap = frappe.db.sql(
+			"""
+			SELECT name
+			FROM `tabPPC Casting Plan`
+			WHERE
+				name != %s
+				AND caster = %s
+				AND status IN %s
+				AND docstatus < 2
+				AND start_datetime < %s
+				AND (
+					(start_datetime <= %s AND end_datetime > %s) OR
+					(start_datetime < %s AND end_datetime >= %s) OR
+					(start_datetime >= %s AND end_datetime <= %s)
+				)
+			LIMIT 1
+			""",
+			(
+				self.name or "New",
+				self.caster,
+				tuple(SHIFTABLE_STATUSES),
+				self.start_datetime,  # Only plans that start BEFORE this plan
+				self.start_datetime, self.start_datetime,
+				self.end_datetime, self.end_datetime,
+				self.start_datetime, self.end_datetime,
+			),
+			as_dict=True
+		)
+
+		if shiftable_overlap:
+			other = shiftable_overlap[0].name
 			frappe.throw(
 				_("Time slot overlaps with another plan on this caster: <b>{0}</b>. "
 				  "Please adjust timing or move that plan.").format(other)
 			)
+
+		# Note: We allow overlap with SHIFTABLE plans that start at/after this plan's start
+		# because those will be shifted by shift_future_plans()
 
 	def validate_workstations(self):
 		"""Ensure caster and furnace workstation types are correct."""
@@ -258,8 +375,9 @@ def get_casting_plans_for_caster(caster, from_date=None, to_date=None):
 		fields=[
 			"name", "cast_no", "plan_type", "plan_date", "shift", "status",
 			"caster", "start_datetime", "end_datetime", "duration_minutes",
-			"product_item", "alloy", "temper", "width_mm", "final_gauge_mm",
-			"planned_weight_mt", "customer", "block_color",
+			"product_item", "alloy", "temper", "planned_width_mm", "planned_gauge_mm",
+			"planned_weight_mt", "final_width_mm", "final_gauge_mm", "final_weight_mt",
+			"customer", "block_color", "charge_mix_recipe",
 			"downtime_type", "downtime_reason"
 		],
 		order_by="start_datetime"

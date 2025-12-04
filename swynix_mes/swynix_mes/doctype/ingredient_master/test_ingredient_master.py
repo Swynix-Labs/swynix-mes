@@ -22,3 +22,4 @@ class IntegrationTestIngredientMaster(IntegrationTestCase):
 
 	pass
 
+

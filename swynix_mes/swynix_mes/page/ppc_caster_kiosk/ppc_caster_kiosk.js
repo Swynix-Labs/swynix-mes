@@ -1,529 +1,537 @@
 // Copyright (c) 2025, Swynix and contributors
 // For license information, please see license.txt
 
+let ppc_calendar = null;
+let current_caster = null;
+
 frappe.pages['ppc-caster-kiosk'].on_page_load = function(wrapper) {
-	frappe.ppc_kiosk = new PPCCasterKiosk(wrapper);
+	let page = frappe.ui.make_app_page({
+		parent: wrapper,
+		title: 'PPC Caster Kiosk',
+		single_column: true
+	});
+
+	$(frappe.render_template("ppc_caster_kiosk", {})).appendTo(page.body);
+
+	// Load FullCalendar dynamically
+	load_fullcalendar().then(() => {
+		init_header_controls();
+		load_casters().then(() => {
+			init_calendar();
+			refresh_events();
+		});
+	});
 };
 
 frappe.pages['ppc-caster-kiosk'].on_page_show = function() {
 	// Refresh data when page is shown
-	if (frappe.ppc_kiosk && frappe.ppc_kiosk.initialized) {
-		frappe.ppc_kiosk.load_timeline();
+	if (ppc_calendar) {
+		refresh_events();
 	}
 };
 
-class PPCCasterKiosk {
-	constructor(wrapper) {
-		this.wrapper = wrapper;
-		this.page = frappe.ui.make_app_page({
-			parent: wrapper,
-			title: 'PPC Caster Kiosk',
-			single_column: true
+// Load FullCalendar CSS and JS dynamically
+function load_fullcalendar() {
+	return new Promise((resolve, reject) => {
+		// Check if already loaded
+		if (window.FullCalendar) {
+			resolve();
+			return;
+		}
+
+		// Load CSS
+		if (!document.querySelector('link[href*="fullcalendar"]')) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css';
+			document.head.appendChild(link);
+		}
+
+		// Load JS
+		const script = document.createElement('script');
+		script.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js';
+		script.onload = () => resolve();
+		script.onerror = () => reject(new Error('Failed to load FullCalendar'));
+		document.head.appendChild(script);
+	});
+}
+
+function init_header_controls() {
+	// Caster dropdown change -> reload events
+	$(document).on('change', '#caster_select', function() {
+		current_caster = $(this).val();
+		refresh_events();
+	});
+
+	// View selection
+	$(document).on('change', '#view_select', function() {
+		if (!ppc_calendar) return;
+		let view = $(this).val();
+		ppc_calendar.changeView(view);
+		refresh_events();
+	});
+
+	// Date navigation
+	$(document).on('click', '#btn_prev', function() {
+		if (ppc_calendar) {
+			ppc_calendar.prev();
+			refresh_events();
+		}
+	});
+
+	$(document).on('click', '#btn_today', function() {
+		if (ppc_calendar) {
+			ppc_calendar.today();
+			refresh_events();
+		}
+	});
+
+	$(document).on('click', '#btn_next', function() {
+		if (ppc_calendar) {
+			ppc_calendar.next();
+			refresh_events();
+		}
+	});
+
+	// Create Plan button
+	$(document).on('click', '#btn_create_plan', function() {
+		if (!ppc_calendar) {
+			frappe.msgprint(__("Calendar not ready."));
+			return;
+		}
+		open_create_plan_dialog();
+	});
+
+	// Export Excel option
+	$(document).on('click', '#export_excel', function(e) {
+		e.preventDefault();
+		export_plans('xlsx');
+	});
+
+	// Export CSV option
+	$(document).on('click', '#export_csv', function(e) {
+		e.preventDefault();
+		export_plans('csv');
+	});
+}
+
+function load_casters() {
+	return frappe.call({
+		method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.get_casters",
+		freeze: true
+	}).then(r => {
+		let select = $("#caster_select");
+		select.empty();
+		select.append(`<option value="">Select Caster</option>`);
+		(r.message || []).forEach(c => {
+			select.append(`<option value="${c.name}">${c.name}</option>`);
 		});
-		this.initialized = false;
-		this.controls = {};
-		this.make();
+
+		// auto select first caster if available
+		if (!current_caster && r.message && r.message.length) {
+			current_caster = r.message[0].name;
+			select.val(current_caster);
+		}
+	});
+}
+
+function init_calendar() {
+	let calendarEl = document.getElementById('ppc_calendar');
+	if (!calendarEl) return;
+
+	ppc_calendar = new FullCalendar.Calendar(calendarEl, {
+		initialView: 'timeGridWeek',
+		slotDuration: '00:30:00',
+		slotLabelInterval: '01:00',
+		allDaySlot: false,
+		editable: false,
+		selectable: false,
+		height: 'auto',
+		nowIndicator: true,
+		headerToolbar: false, // We use custom header controls
+		dayHeaderFormat: { weekday: 'short', month: 'numeric', day: 'numeric' },
+
+		// Do nothing on empty-slot click
+		dateClick: function(info) {
+			return;
+		},
+
+		// When user clicks existing event -> open doc
+		eventClick: function(info) {
+			if (info.event.extendedProps && info.event.extendedProps.docname) {
+				frappe.set_route('Form', 'PPC Casting Plan', info.event.extendedProps.docname);
+			}
+		},
+
+		// Fetch events dynamically
+		events: function(fetchInfo, successCallback, failureCallback) {
+			fetch_events(fetchInfo.startStr, fetchInfo.endStr)
+				.then(events => successCallback(events))
+				.catch(err => failureCallback(err));
+		}
+	});
+
+	ppc_calendar.render();
+}
+
+function refresh_events() {
+	if (ppc_calendar) {
+		ppc_calendar.refetchEvents();
+	}
+}
+
+// Backend call to get events for range
+function fetch_events(start, end) {
+	if (!current_caster) {
+		return Promise.resolve([]);
 	}
 
-	make() {
-		this.make_filters();
-		this.make_timeline_section();
-		this.make_form_section();
-		this.bind_events();
-		this.initialized = true;
+	return frappe.call({
+		method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.get_plan_for_range",
+		args: {
+			caster: current_caster,
+			start: start,
+			end: end
+		}
+	}).then(r => {
+		const plans = r.message || [];
+		return plans.map(p => {
+			let title = p.plan_type === "Downtime"
+				? `DT: ${p.downtime_type || ''}`
+				: `${p.product_item || ''} (${p.alloy || ''} / ${p.temper || ''})`;
+
+			let color = p.plan_type === "Downtime" ? '#e74c3c' : '#2ecc71';
+
+			return {
+				id: p.name,
+				title: title,
+				start: p.start_datetime,
+				end: p.end_datetime,
+				backgroundColor: color,
+				borderColor: color,
+				extendedProps: {
+					docname: p.name,
+					plan_type: p.plan_type,
+					status: p.status
+				}
+			};
+		});
+	});
+}
+
+// Dialog to create new plan (opened via Create Plan button)
+function open_create_plan_dialog() {
+	// Default start/end based on current calendar date
+	let base_date = ppc_calendar ? ppc_calendar.getDate() : new Date();
+	
+	// Round to next hour for nicer default
+	let start_date = new Date(base_date);
+	let minutes = start_date.getMinutes();
+	if (minutes > 0) {
+		start_date.setMinutes(0);
+		start_date.setHours(start_date.getHours() + 1);
 	}
+	start_date.setSeconds(0);
+	start_date.setMilliseconds(0);
+	
+	let end_date = new Date(start_date);
+	end_date.setHours(end_date.getHours() + 1); // 1 hour by default
+	
+	let start = frappe.datetime.get_datetime_as_string(start_date);
+	let end = frappe.datetime.get_datetime_as_string(end_date);
 
-	make_filters() {
-		// Add filters to page actions area
-		this.page.add_inner_button(__('Refresh'), () => this.load_timeline(), null, 'primary');
-
-		// Caster filter
-		this.controls.caster = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Link',
-				options: 'Workstation',
+	let d = new frappe.ui.Dialog({
+		title: __('Create Caster Plan'),
+		fields: [
+			{
 				fieldname: 'caster',
-				label: 'Caster',
-				placeholder: 'Select Caster',
-				get_query: () => ({
-					filters: { workstation_type: 'Casting' }
-				}),
-				change: () => this.load_timeline()
-			},
-			parent: this.page.page_actions,
-			render_input: true
-		});
-		this.controls.caster.$wrapper.addClass('ml-2').css('min-width', '180px');
-
-		// Date filter
-		this.controls.plan_date = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Date',
-				fieldname: 'plan_date',
-				label: 'Date',
-				default: frappe.datetime.get_today(),
-				change: () => this.load_timeline()
-			},
-			parent: this.page.page_actions,
-			render_input: true
-		});
-		this.controls.plan_date.$wrapper.addClass('ml-2').css('min-width', '140px');
-		this.controls.plan_date.set_value(frappe.datetime.get_today());
-	}
-
-	make_timeline_section() {
-		this.$timeline_container = $(`
-			<div class="ppc-timeline-section frappe-card" style="margin:15px; padding:20px;">
-				<div class="d-flex justify-content-between align-items-center mb-3">
-					<h4 class="mb-0">Schedule</h4>
-					<span class="timeline-info text-muted small"></span>
-				</div>
-				<div class="timeline-content" style="min-height:200px; border:1px solid var(--border-color); border-radius:8px; padding:15px; background:var(--fg-color);">
-					<div class="text-center text-muted" style="padding:60px 20px;">
-						<i class="fa fa-calendar-o fa-3x mb-3 d-block"></i>
-						Select a caster and date to view schedule
-					</div>
-				</div>
-			</div>
-		`).appendTo(this.page.body);
-
-		this.$timeline = this.$timeline_container.find('.timeline-content');
-		this.$timeline_info = this.$timeline_container.find('.timeline-info');
-	}
-
-	make_form_section() {
-		this.$form_container = $(`
-			<div class="ppc-form-section frappe-card" style="margin:15px; padding:20px;">
-				<h4 class="mb-4">Create New Plan</h4>
-				<div class="row">
-					<div class="col-md-4 common-fields"></div>
-					<div class="col-md-4 casting-fields"></div>
-					<div class="col-md-4 downtime-fields" style="display:none;"></div>
-				</div>
-				<div class="row mt-4">
-					<div class="col-12">
-						<button class="btn btn-primary btn-lg mr-2 create-plan-btn">
-							<i class="fa fa-plus"></i> Create Plan
-						</button>
-						<button class="btn btn-default btn-lg clear-form-btn">
-							<i class="fa fa-eraser"></i> Clear Form
-						</button>
-					</div>
-				</div>
-			</div>
-		`).appendTo(this.page.body);
-
-		this.make_common_fields();
-		this.make_casting_fields();
-		this.make_downtime_fields();
-	}
-
-	make_common_fields() {
-		const $container = this.$form_container.find('.common-fields');
-
-		// Plan Type
-		this.controls.plan_type = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Select',
-				fieldname: 'plan_type',
-				label: 'Plan Type',
-				options: 'Casting\nDowntime',
-				default: 'Casting',
-				reqd: 1,
-				change: () => this.toggle_plan_type_fields()
-			},
-			parent: $container,
-			render_input: true
-		});
-		this.controls.plan_type.set_value('Casting');
-
-		// Start Datetime
-		this.controls.start_datetime = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Datetime',
-				fieldname: 'start_datetime',
-				label: 'Start Datetime',
-				reqd: 1
-			},
-			parent: $container,
-			render_input: true
-		});
-
-		// End Datetime
-		this.controls.end_datetime = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Datetime',
-				fieldname: 'end_datetime',
-				label: 'End Datetime',
-				reqd: 1
-			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Furnace
-		this.controls.furnace = frappe.ui.form.make_control({
-			df: {
+				label: __('Caster'),
 				fieldtype: 'Link',
 				options: 'Workstation',
-				fieldname: 'furnace',
-				label: 'Furnace (optional)',
-				get_query: () => ({
-					filters: { workstation_type: 'Foundry' }
-				})
+				reqd: 1,
+				default: current_caster
 			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Planned Weight
-		this.controls.planned_weight_mt = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Float',
-				fieldname: 'planned_weight_mt',
-				label: 'Planned Weight (MT)',
-				precision: 3
+			{
+				fieldname: 'plan_type',
+				label: __('Plan Type'),
+				fieldtype: 'Select',
+				options: ['Casting', 'Downtime'],
+				default: 'Casting',
+				reqd: 1
 			},
-			parent: $container,
-			render_input: true
-		});
-	}
+			{
+				fieldname: 'start_datetime',
+				label: __('Start'),
+				fieldtype: 'Datetime',
+				default: start,
+				reqd: 1
+			},
+			{
+				fieldname: 'end_datetime',
+				label: __('End'),
+				fieldtype: 'Datetime',
+				default: end,
+				reqd: 1
+			},
 
-	make_casting_fields() {
-		const $container = this.$form_container.find('.casting-fields');
+			{ fieldname: 'section_planned', fieldtype: 'Section Break', label: __('Planned Parameters') },
 
-		// Product Item
-		this.controls.product_item = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Link',
-				options: 'Item',
+			// Core PPC casting fields (planned)
+			{
 				fieldname: 'product_item',
-				label: 'Product Item',
-				reqd: 1,
-				get_query: () => ({
-					filters: { item_group: 'Product' }
-				})
-			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Alloy
-		this.controls.alloy = frappe.ui.form.make_control({
-			df: {
+				label: __('Product Item'),
 				fieldtype: 'Link',
 				options: 'Item',
-				fieldname: 'alloy',
-				label: 'Alloy',
-				reqd: 1,
-				get_query: () => ({
-					filters: { item_group: 'Alloy' }
-				})
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
 			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Temper
-		this.controls.temper = frappe.ui.form.make_control({
-			df: {
+			{
+				fieldname: 'alloy',
+				label: __('Alloy'),
+				fieldtype: 'Link',
+				options: 'Item',
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
+			},
+			{
+				fieldname: 'customer',
+				label: __('Customer'),
+				fieldtype: 'Link',
+				options: 'Customer',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
+			{
+				fieldname: 'temper',
+				label: __('Temper'),
 				fieldtype: 'Link',
 				options: 'Temper',
-				fieldname: 'temper',
-				label: 'Temper'
+				depends_on: "eval:doc.plan_type=='Casting'"
 			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Width
-		this.controls.width_mm = frappe.ui.form.make_control({
-			df: {
+			{
+				fieldname: 'planned_width_mm',
+				label: __('Planned Width (mm)'),
 				fieldtype: 'Float',
-				fieldname: 'width_mm',
-				label: 'Width (mm)',
-				reqd: 1,
-				precision: 2
+				depends_on: "eval:doc.plan_type=='Casting'"
 			},
-			parent: $container,
-			render_input: true
-		});
-
-		// Final Gauge
-		this.controls.final_gauge_mm = frappe.ui.form.make_control({
-			df: {
+			{
+				fieldname: 'planned_gauge_mm',
+				label: __('Planned Gauge (mm)'),
 				fieldtype: 'Float',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
+			{
+				fieldname: 'planned_weight_mt',
+				label: __('Planned Weight (MT)'),
+				fieldtype: 'Float',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
+
+			{ fieldname: 'section_final', fieldtype: 'Section Break', label: __('Final Parameters (Optional)') },
+
+			{
+				fieldname: 'final_width_mm',
+				label: __('Final Width (mm)'),
+				fieldtype: 'Float',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
+			{
 				fieldname: 'final_gauge_mm',
-				label: 'Final Gauge (mm)',
-				reqd: 1,
-				precision: 3
+				label: __('Final Gauge (mm)'),
+				fieldtype: 'Float',
+				depends_on: "eval:doc.plan_type=='Casting'"
 			},
-			parent: $container,
-			render_input: true
-		});
-	}
+			{
+				fieldname: 'final_weight_mt',
+				label: __('Final Weight (MT)'),
+				fieldtype: 'Float',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
 
-	make_downtime_fields() {
-		const $container = this.$form_container.find('.downtime-fields');
+			{ fieldname: 'section_recipe', fieldtype: 'Section Break', label: __('Recipe & Remarks') },
 
-		// Downtime Type
-		this.controls.downtime_type = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Select',
+			{
+				fieldname: 'charge_mix_recipe',
+				label: __('Charge Mix Recipe'),
+				fieldtype: 'Link',
+				options: 'Charge Mix Ratio',
+				depends_on: "eval:doc.plan_type=='Casting'"
+			},
+			{
+				fieldname: 'remarks',
+				label: __('Remarks'),
+				fieldtype: 'Small Text'
+			},
+
+			// Downtime fields
+			{
 				fieldname: 'downtime_type',
-				label: 'Downtime Type',
+				label: __('Downtime Type'),
+				fieldtype: 'Select',
 				options: 'Roll Change\nScheduled Maintenance\nBreakdown\nTrial\nOther',
-				default: 'Roll Change',
-				reqd: 1
+				depends_on: "eval:doc.plan_type=='Downtime'"
 			},
-			parent: $container,
-			render_input: true
-		});
-		this.controls.downtime_type.set_value('Roll Change');
-
-		// Downtime Reason
-		this.controls.downtime_reason = frappe.ui.form.make_control({
-			df: {
-				fieldtype: 'Small Text',
+			{
 				fieldname: 'downtime_reason',
-				label: 'Reason'
-			},
-			parent: $container,
-			render_input: true
-		});
-	}
+				label: __('Reason'),
+				fieldtype: 'Small Text',
+				depends_on: "eval:doc.plan_type=='Downtime'"
+			}
+		],
+		primary_action_label: __('Create Plan'),
+		primary_action(values) {
+			if (!values.caster) {
+				frappe.msgprint(__("Please select a caster."));
+				return;
+			}
+			if (!values.start_datetime || !values.end_datetime) {
+				frappe.msgprint(__("Please set Start and End time."));
+				return;
+			}
 
-	toggle_plan_type_fields() {
-		const plan_type = this.controls.plan_type.get_value();
-		const $casting = this.$form_container.find('.casting-fields');
-		const $downtime = this.$form_container.find('.downtime-fields');
+			// First check if this will affect existing plans
+			frappe.call({
+				method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.check_caster_plan_impact",
+				args: {
+					caster: values.caster,
+					start_datetime: values.start_datetime
+				},
+				freeze: true,
+				callback: function(r) {
+					const affected = r.message || [];
 
-		if (plan_type === 'Casting') {
-			$casting.show();
-			$downtime.hide();
-		} else {
-			$casting.hide();
-			$downtime.show();
-		}
-	}
+					// No future plans => safe to create directly
+					if (!affected.length) {
+						do_create_plan_from_dialog(d, values);
+						return;
+					}
 
-	bind_events() {
-		// Create plan button
-		this.$form_container.find('.create-plan-btn').click(() => this.create_plan());
+					// There ARE plans at/after this start => ask confirmation
+					const count = affected.length;
+					const first = affected[0];
 
-		// Clear form button
-		this.$form_container.find('.clear-form-btn').click(() => this.clear_form());
-	}
+					let msg = __(
+						"There are {0} existing plan(s) for {1} starting at or after this time. " +
+						"If you create this plan, all of them will be moved forward.<br><br>" +
+						"First affected plan: <b>{2}</b> ({3} – {4}).<br><br>" +
+						"Do you want to continue?",
+						[
+							count,
+							values.caster,
+							first.name,
+							frappe.datetime.str_to_user(first.start_datetime),
+							frappe.datetime.str_to_user(first.end_datetime)
+						]
+					);
 
-	load_timeline() {
-		const caster = this.controls.caster.get_value();
-		const date = this.controls.plan_date.get_value();
-
-		if (!caster || !date) {
-			this.$timeline.html(`
-				<div class="text-center text-muted" style="padding:60px 20px;">
-					<i class="fa fa-calendar-o fa-3x mb-3 d-block"></i>
-					Select a caster and date to view schedule
-				</div>
-			`);
-			this.$timeline_info.text('');
-			return;
-		}
-
-		this.$timeline.html(`
-			<div class="text-center" style="padding:60px 20px;">
-				<i class="fa fa-spinner fa-spin fa-2x"></i>
-				<p class="mt-3">Loading schedule...</p>
-			</div>
-		`);
-
-		frappe.call({
-			method: 'swynix_mes.swynix_mes.api.ppc_caster_kiosk.get_plans_for_day',
-			args: { caster, date },
-			callback: (r) => {
-				const plans = r.message || [];
-				this.$timeline_info.text(`${plans.length} plan(s) for ${frappe.datetime.str_to_user(date)}`);
-
-				if (plans.length === 0) {
-					this.$timeline.html(`
-						<div class="text-center text-muted" style="padding:60px 20px;">
-							<i class="fa fa-calendar-check-o fa-3x mb-3 d-block"></i>
-							<p>No plans scheduled for this day</p>
-						</div>
-					`);
-					return;
+					frappe.confirm(
+						msg,
+						() => {
+							// User said OK → actually create & shift
+							do_create_plan_from_dialog(d, values);
+						},
+						() => {
+							// User cancelled → do nothing
+						}
+					);
 				}
-
-				// Sort by start time
-				plans.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
-				this.render_timeline(plans);
-			}
-		});
-	}
-
-	render_timeline(plans) {
-		let html = '<div class="timeline-plans">';
-
-		plans.forEach(p => {
-			const planClass = p.plan_type === 'Casting' ? 'casting' : 'downtime';
-			const badgeColor = p.plan_type === 'Casting' ? 'green' : 'red';
-			const startTime = this.format_time(p.start_datetime);
-			const endTime = this.format_time(p.end_datetime);
-			const duration = this.calculate_duration(p.start_datetime, p.end_datetime);
-
-			let details = '';
-			if (p.plan_type === 'Casting') {
-				details = `
-					<div class="mt-2">
-						<strong>${frappe.utils.escape_html(p.product_item || 'N/A')}</strong><br>
-						<span class="text-muted">
-							Alloy: ${frappe.utils.escape_html(p.alloy || 'N/A')} | 
-							Temper: ${frappe.utils.escape_html(p.temper || 'N/A')}<br>
-							Width: ${p.width_mm || 'N/A'} mm | 
-							Gauge: ${p.final_gauge_mm || 'N/A'} mm |
-							Weight: ${p.planned_weight_mt || 'N/A'} MT
-						</span>
-					</div>
-				`;
-			} else {
-				details = `
-					<div class="mt-2">
-						<strong>${frappe.utils.escape_html(p.downtime_type || 'Downtime')}</strong><br>
-						<span class="text-muted">${frappe.utils.escape_html(p.downtime_reason || 'No reason specified')}</span>
-					</div>
-				`;
-			}
-
-			html += `
-				<div class="plan-block ${planClass}" style="padding:15px; margin-bottom:10px; border-radius:8px; border-left:4px solid var(--${badgeColor}); background:var(--card-bg); box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-					<div class="d-flex justify-content-between align-items-center">
-						<span class="badge badge-${badgeColor === 'green' ? 'success' : 'danger'}" style="font-size:11px;">${p.plan_type}</span>
-						<span class="text-muted small">${startTime} - ${endTime} (${duration})</span>
-					</div>
-					${details}
-					<div class="mt-2 d-flex align-items-center">
-						<a href="/app/ppc-casting-plan/${p.name}" class="text-primary small">
-							<i class="fa fa-external-link"></i> ${p.name}
-						</a>
-						<span class="ml-3 text-muted small">Status: <strong>${p.status}</strong></span>
-					</div>
-				</div>
-			`;
-		});
-
-		html += '</div>';
-		this.$timeline.html(html);
-	}
-
-	format_time(datetime) {
-		if (!datetime) return '';
-		const d = new Date(datetime);
-		return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-	}
-
-	calculate_duration(start, end) {
-		if (!start || !end) return '';
-		const s = new Date(start);
-		const e = new Date(end);
-		const diffMs = e - s;
-		const diffMins = Math.round(diffMs / 60000);
-		if (diffMins < 60) {
-			return `${diffMins} min`;
+			});
 		}
-		const hours = Math.floor(diffMins / 60);
-		const mins = diffMins % 60;
-		return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-	}
+	});
 
-	create_plan() {
-		const caster = this.controls.caster.get_value();
-		const plan_type = this.controls.plan_type.get_value();
-		const start_datetime = this.controls.start_datetime.get_value();
-		const end_datetime = this.controls.end_datetime.get_value();
+	// Filter Caster field to Casting workstations
+	d.fields_dict.caster.get_query = function() {
+		return { filters: { workstation_type: 'Casting' } };
+	};
 
-		// Validation
-		if (!caster) {
-			frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Please select a Caster in the filter above' });
-			return;
-		}
-		if (!start_datetime || !end_datetime) {
-			frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Please enter Start and End datetime' });
-			return;
-		}
+	// Product Item: Item Group = Product
+	d.fields_dict.product_item.get_query = function() {
+		return { filters: { item_group: 'Product' } };
+	};
 
-		const data = {
-			caster: caster,
-			plan_type: plan_type,
-			start_datetime: start_datetime,
-			end_datetime: end_datetime,
-			furnace: this.controls.furnace.get_value() || null,
-			planned_weight_mt: this.controls.planned_weight_mt.get_value() || null
+	// Alloy: Item Group = Alloy
+	d.fields_dict.alloy.get_query = function() {
+		return { filters: { item_group: 'Alloy' } };
+	};
+
+	// Charge Mix Recipe: filter by selected alloy
+	if (d.fields_dict.charge_mix_recipe) {
+		d.fields_dict.charge_mix_recipe.get_query = function() {
+			const alloy = d.get_value('alloy');
+			const filters = alloy ? { alloy: alloy, is_active: 1 } : { is_active: 1 };
+			return { filters };
 		};
+	}
 
-		if (plan_type === 'Casting') {
-			data.product_item = this.controls.product_item.get_value();
-			data.alloy = this.controls.alloy.get_value();
-			data.temper = this.controls.temper.get_value();
-			data.width_mm = this.controls.width_mm.get_value() || null;
-			data.final_gauge_mm = this.controls.final_gauge_mm.get_value() || null;
-
-			// Casting validation
-			if (!data.product_item) {
-				frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Product Item is required for Casting' });
-				return;
-			}
-			if (!data.alloy) {
-				frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Alloy is required for Casting' });
-				return;
-			}
-			if (!data.width_mm || data.width_mm <= 0) {
-				frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Valid Width (mm) is required for Casting' });
-				return;
-			}
-			if (!data.final_gauge_mm || data.final_gauge_mm <= 0) {
-				frappe.msgprint({ title: 'Validation Error', indicator: 'red', message: 'Valid Final Gauge (mm) is required for Casting' });
-				return;
-			}
-		} else {
-			data.downtime_type = this.controls.downtime_type.get_value();
-			data.downtime_reason = this.controls.downtime_reason.get_value();
-		}
-
+	// Auto-set recipe when alloy is chosen
+	d.fields_dict.alloy.df.onchange = () => {
+		const alloy = d.get_value('alloy');
+		if (!alloy) return;
 		frappe.call({
-			method: 'swynix_mes.swynix_mes.api.ppc_caster_kiosk.create_plan',
-			args: { data: data },
-			freeze: true,
-			freeze_message: 'Creating plan...',
-			callback: (r) => {
-				if (r.message) {
-					frappe.show_alert({
-						message: `Plan <a href="/app/ppc-casting-plan/${r.message}">${r.message}</a> created successfully`,
-						indicator: 'green'
-					}, 5);
-					this.clear_form();
-					this.load_timeline();
+			method: "frappe.client.get_list",
+			args: {
+				doctype: "Charge Mix Ratio",
+				filters: { alloy: alloy, is_active: 1 },
+				fields: ["name"],
+				limit_page_length: 1
+			},
+			callback: r => {
+				if (r.message && r.message.length) {
+					d.set_value('charge_mix_recipe', r.message[0].name);
 				}
 			}
 		});
-	}
+	};
 
-	clear_form() {
-		// Clear all form controls
-		const fields_to_clear = [
-			'start_datetime', 'end_datetime', 'furnace', 'planned_weight_mt',
-			'product_item', 'alloy', 'temper', 'width_mm', 'final_gauge_mm',
-			'downtime_reason'
-		];
+	// Refresh fields visibility when plan_type changes
+	d.fields_dict.plan_type.df.onchange = () => {
+		d.refresh();
+	};
 
-		fields_to_clear.forEach(field => {
-			if (this.controls[field]) {
-				this.controls[field].set_value('');
+	d.show();
+	
+	// Trigger initial refresh to show/hide depends_on fields
+	setTimeout(() => {
+		d.refresh();
+	}, 100);
+}
+
+// Helper function to actually create the plan after confirmation
+function do_create_plan_from_dialog(dialog, values) {
+	frappe.call({
+		method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.create_plan",
+		args: { data: values },
+		freeze: true,
+		callback: function(r) {
+			dialog.hide();
+			frappe.show_alert({
+				message: __('Plan {0} created and schedule updated.', [r.message]),
+				indicator: 'green'
+			}, 5);
+			// If caster changed inside dialog, sync header & refresh
+			if (values.caster && values.caster !== current_caster) {
+				current_caster = values.caster;
+				$("#caster_select").val(current_caster);
 			}
-		});
+			refresh_events();
+		}
+	});
+}
 
-		// Reset defaults
-		this.controls.plan_type.set_value('Casting');
-		this.controls.downtime_type.set_value('Roll Change');
-		this.toggle_plan_type_fields();
+// Export plans to Excel or CSV
+function export_plans(format) {
+	if (!current_caster) {
+		frappe.msgprint(__("Please select a caster before exporting."));
+		return;
 	}
+	if (!ppc_calendar) return;
+
+	const view = ppc_calendar.view;
+	const start = view.currentStart.toISOString();
+	const end = view.currentEnd.toISOString();
+
+	// Build URL for direct download
+	const url = `/api/method/swynix_mes.swynix_mes.api.ppc_caster_kiosk.export_plans?caster=${encodeURIComponent(current_caster)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&format=${encodeURIComponent(format)}`;
+	
+	// Open URL to trigger download
+	window.open(url, '_blank');
 }

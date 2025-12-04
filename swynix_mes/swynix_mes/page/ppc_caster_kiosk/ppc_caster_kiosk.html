@@ -1,42 +1,154 @@
-<!-- This template is intentionally minimal as the page is built dynamically via JS -->
 <style>
-.ppc-timeline-section,
-.ppc-form-section {
-	box-shadow: var(--card-shadow);
+/* Custom styles for PPC Kiosk Calendar */
+.ppc-kiosk-container {
+	padding: 12px;
 }
 
-.ppc-form-section .frappe-control {
-	margin-bottom: 12px;
+.ppc-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 10px;
+	flex-wrap: wrap;
+	gap: 10px;
 }
 
-.ppc-form-section .frappe-control .control-label {
+.ppc-header h2 {
+	margin: 0;
+	font-size: 1.5rem;
 	font-weight: 600;
-	margin-bottom: 4px;
 }
 
-.timeline-plans .plan-block:hover {
-	transform: translateX(3px);
-	transition: transform 0.2s ease;
+.ppc-header-controls {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
 }
 
-.page-actions .frappe-control {
-	display: inline-block;
-	vertical-align: middle;
+#ppc_calendar {
+	border: 1px solid var(--border-color, #ddd);
+	border-radius: 4px;
+	padding: 4px;
+	background: var(--card-bg, #fff);
 }
 
-.page-actions .frappe-control .control-label {
-	display: none;
+/* FullCalendar customizations */
+.fc {
+	font-family: var(--font-stack, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
 }
 
-.page-actions .frappe-control .control-input-wrapper {
-	margin-top: 0;
+.fc .fc-toolbar-title {
+	font-size: 1.2rem;
+	font-weight: 600;
 }
 
-/* Fix for badge colors */
-.badge-success {
-	background-color: var(--green);
+.fc-event {
+	cursor: pointer;
+	border-radius: 4px;
+	padding: 2px 4px;
+	font-size: 11px;
 }
-.badge-danger {
-	background-color: var(--red);
+
+.fc-event:hover {
+	opacity: 0.9;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.fc-timegrid-slot {
+	height: 40px !important;
+}
+
+.fc-timegrid-slot-label {
+	font-size: 11px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] #ppc_calendar,
+.dark #ppc_calendar {
+	background: var(--card-bg, #1a1a1a);
+	border-color: var(--border-color, #333);
+}
+
+[data-theme="dark"] .fc-theme-standard td,
+[data-theme="dark"] .fc-theme-standard th,
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+	border-color: var(--border-color, #333);
+}
+
+[data-theme="dark"] .fc-col-header-cell,
+.dark .fc-col-header-cell {
+	background: var(--subtle-fg, #2a2a2a);
+}
+
+/* Control styling */
+.ppc-header-controls select,
+.ppc-header-controls .form-control {
+	height: 32px;
+	padding: 4px 8px;
+	font-size: 13px;
+	border-radius: 4px;
+	border: 1px solid var(--border-color, #ddd);
+	background: var(--card-bg, #fff);
+	color: var(--text-color, #333);
+}
+
+.ppc-header-controls .btn {
+	height: 32px;
+	padding: 4px 12px;
+	font-size: 13px;
+}
+
+.ppc-tip {
+	margin-top: 8px;
+	font-size: 12px;
+	color: var(--text-muted, #777);
 }
 </style>
+
+<div class="ppc-kiosk-container">
+
+	<!-- Header: title + caster + date nav -->
+	<div class="ppc-header">
+		<div>
+			<h2>PPC Caster Kiosk</h2>
+			<small class="text-muted">Planner view similar to Google Calendar</small>
+		</div>
+
+		<div class="ppc-header-controls">
+			<label style="margin-right:4px;">Caster</label>
+			<select id="caster_select" class="form-control" style="width:180px;"></select>
+
+			<button class="btn btn-default btn-sm" id="btn_prev">&lt;</button>
+			<button class="btn btn-default btn-sm" id="btn_today">Today</button>
+			<button class="btn btn-default btn-sm" id="btn_next">&gt;</button>
+
+			<select id="view_select" class="form-control" style="width:140px;">
+				<option value="timeGridDay">Day View</option>
+				<option value="timeGridWeek" selected>Week View</option>
+			</select>
+
+			<button class="btn btn-primary btn-sm" id="btn_create_plan">Create Plan</button>
+			<div class="dropdown" style="display:inline-block;">
+				<button class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" id="btn_export">
+					Export <span class="caret"></span>
+				</button>
+				<ul class="dropdown-menu dropdown-menu-right" role="menu">
+					<li><a class="dropdown-item" href="#" id="export_excel"><i class="fa fa-file-excel-o"></i> Excel (.xlsx)</a></li>
+					<li><a class="dropdown-item" href="#" id="export_csv"><i class="fa fa-file-text-o"></i> CSV (.csv)</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+	<!-- Calendar -->
+	<div id="ppc_calendar"></div>
+
+	<!-- Hint -->
+	<div class="ppc-tip">
+		<i class="fa fa-info-circle"></i>
+		Tip: Click on an event to open the PPC Casting Plan document. Use "Create Plan" button to add new plans.
+	</div>
+
+</div>

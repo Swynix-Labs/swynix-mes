@@ -8,3 +8,4 @@ class IngredientItemGroup(Document):
 	# Child table - validation handled in parent
 	pass
 
+

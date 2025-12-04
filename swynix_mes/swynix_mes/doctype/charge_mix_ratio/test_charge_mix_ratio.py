@@ -22,3 +22,4 @@ class IntegrationTestChargeMixRatio(IntegrationTestCase):
 
 	pass
 
+
