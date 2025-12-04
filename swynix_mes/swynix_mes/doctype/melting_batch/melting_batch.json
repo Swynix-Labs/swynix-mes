@@ -1,0 +1,421 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "MB-.YYYY.-.#####",
+ "creation": "2025-12-04 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "batch_info_section",
+  "melting_batch_id",
+  "ppc_casting_plan",
+  "furnace",
+  "holder",
+  "shift",
+  "column_break_batch_info",
+  "alloy",
+  "product_item",
+  "charge_mix_recipe",
+  "plan_date",
+  "status",
+  "weight_summary_section",
+  "planned_weight_mt",
+  "charged_weight_mt",
+  "tapped_weight_mt",
+  "column_break_weight",
+  "dross_weight_kg",
+  "scrap_return_kg",
+  "yield_percent",
+  "timings_section",
+  "batch_start_datetime",
+  "batch_end_datetime",
+  "column_break_timings",
+  "transfer_start_datetime",
+  "transfer_end_datetime",
+  "summary_parameters_section",
+  "max_temp_c",
+  "fo_temp_c",
+  "fo_pressure_bar",
+  "column_break_parameters",
+  "energy_fuel_litre",
+  "lng_scm",
+  "remarks",
+  "people_signoffs_section",
+  "operator",
+  "supervisor",
+  "column_break_signoffs",
+  "operator_signed_by",
+  "lab_signed_by",
+  "supervisor_signed_by",
+  "approved_by",
+  "raw_materials_section",
+  "raw_materials",
+  "process_logs_section",
+  "process_logs",
+  "spectro_samples_section",
+  "spectro_samples",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "batch_info_section",
+   "fieldtype": "Section Break",
+   "label": "Batch Info"
+  },
+  {
+   "fieldname": "melting_batch_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Melting Batch ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ppc_casting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "PPC Casting Plan",
+   "options": "PPC Casting Plan"
+  },
+  {
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Furnace",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "holder",
+   "fieldtype": "Link",
+   "label": "Holder",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Shift",
+   "options": "A\nB\nC"
+  },
+  {
+   "fieldname": "column_break_batch_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "alloy",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Alloy",
+   "options": "Item"
+  },
+  {
+   "fieldname": "product_item",
+   "fieldtype": "Link",
+   "label": "Product Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "charge_mix_recipe",
+   "fieldtype": "Link",
+   "label": "Charge Mix Recipe",
+   "options": "Charge Mix Ratio"
+  },
+  {
+   "fieldname": "plan_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Plan Date"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nCharging\nMelting\nReady for Transfer\nTransferred\nCancelled"
+  },
+  {
+   "fieldname": "weight_summary_section",
+   "fieldtype": "Section Break",
+   "label": "Weight Summary"
+  },
+  {
+   "fieldname": "planned_weight_mt",
+   "fieldtype": "Float",
+   "label": "Planned Metal (MT)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "charged_weight_mt",
+   "fieldtype": "Float",
+   "label": "Charged Metal (MT)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tapped_weight_mt",
+   "fieldtype": "Float",
+   "label": "Tapped Metal (MT)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_weight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dross_weight_kg",
+   "fieldtype": "Float",
+   "label": "Dross (kg)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "scrap_return_kg",
+   "fieldtype": "Float",
+   "label": "Return Scrap (kg)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "yield_percent",
+   "fieldtype": "Float",
+   "label": "Yield (%)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timings_section",
+   "fieldtype": "Section Break",
+   "label": "Timings"
+  },
+  {
+   "fieldname": "batch_start_datetime",
+   "fieldtype": "Datetime",
+   "label": "Batch Start"
+  },
+  {
+   "fieldname": "batch_end_datetime",
+   "fieldtype": "Datetime",
+   "label": "Batch End"
+  },
+  {
+   "fieldname": "column_break_timings",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transfer_start_datetime",
+   "fieldtype": "Datetime",
+   "label": "Transfer Start"
+  },
+  {
+   "fieldname": "transfer_end_datetime",
+   "fieldtype": "Datetime",
+   "label": "Transfer End"
+  },
+  {
+   "fieldname": "summary_parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Summary Parameters"
+  },
+  {
+   "fieldname": "max_temp_c",
+   "fieldtype": "Float",
+   "label": "Max Furnace Temp (°C)",
+   "precision": "1"
+  },
+  {
+   "fieldname": "fo_temp_c",
+   "fieldtype": "Float",
+   "label": "FO Temp at Transfer (°C)",
+   "precision": "1"
+  },
+  {
+   "fieldname": "fo_pressure_bar",
+   "fieldtype": "Float",
+   "label": "FO Pressure (bar)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_parameters",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "energy_fuel_litre",
+   "fieldtype": "Float",
+   "label": "Fuel Consumption (L/SCM)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "lng_scm",
+   "fieldtype": "Float",
+   "label": "LNG Consumption (SCM)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "people_signoffs_section",
+   "fieldtype": "Section Break",
+   "label": "People & Sign-Offs"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Link",
+   "label": "Furnace Operator",
+   "options": "User"
+  },
+  {
+   "fieldname": "supervisor",
+   "fieldtype": "Link",
+   "label": "Shift Incharge",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_signoffs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operator_signed_by",
+   "fieldtype": "Link",
+   "label": "Operator Signed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "lab_signed_by",
+   "fieldtype": "Link",
+   "label": "Lab Signed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "supervisor_signed_by",
+   "fieldtype": "Link",
+   "label": "Supervisor Signed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "raw_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Raw Materials"
+  },
+  {
+   "fieldname": "raw_materials",
+   "fieldtype": "Table",
+   "label": "Raw Materials",
+   "options": "Melting Batch Raw Material"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "process_logs_section",
+   "fieldtype": "Section Break",
+   "label": "Process Logs"
+  },
+  {
+   "fieldname": "process_logs",
+   "fieldtype": "Table",
+   "label": "Process Logs",
+   "options": "Melting Batch Process Log"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "spectro_samples_section",
+   "fieldtype": "Section Break",
+   "label": "Spectro Samples"
+  },
+  {
+   "fieldname": "spectro_samples",
+   "fieldtype": "Table",
+   "label": "Spectro Samples",
+   "options": "Melting Batch Spectro Sample"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Melting Batch",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-04 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Batch",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Furnace Operator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Lab User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "MES Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "melting_batch_id,alloy,furnace,plan_date",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "melting_batch_id",
+ "track_changes": 1,
+ "track_seen": 1
+}

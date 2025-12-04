@@ -1,0 +1,233 @@
+<style>
+.melting-kiosk {
+	padding: 15px;
+}
+
+.melting-kiosk-header {
+	margin-bottom: 15px;
+	padding: 10px 15px;
+	background: #fff;
+	border-radius: 8px;
+	border: 1px solid #ddd;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.melting-kiosk-header .form-inline {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.melting-kiosk-header .form-control {
+	min-width: 150px;
+	height: 36px;
+}
+
+.mk-big-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 15px 0;
+}
+
+.mk-big-buttons .btn {
+	font-size: 16px;
+	padding: 12px 20px;
+	min-width: 140px;
+}
+
+.mk-batch-item {
+	cursor: pointer;
+}
+
+.mk-batch-item:hover {
+	background-color: #f8f9fa;
+}
+
+.mk-batch-item.active {
+	background-color: #e3f2fd;
+	border-color: #2490ef;
+}
+
+.mk-batch-item .list-group-item-heading {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.mk-batch-item .list-group-item-text {
+	font-size: 12px;
+	color: #6c757d;
+}
+
+.mk-status-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.mk-status-draft { background: #e0e0e0; color: #555; }
+.mk-status-charging { background: #bbdefb; color: #1565c0; }
+.mk-status-melting { background: #ffe0b2; color: #e65100; }
+.mk-status-ready { background: #fff9c4; color: #f57f17; }
+.mk-status-transferred { background: #c8e6c9; color: #2e7d32; }
+.mk-status-cancelled { background: #ffcdd2; color: #c62828; }
+
+.mk-summary-card {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	padding: 15px;
+	margin-bottom: 15px;
+}
+
+.mk-summary-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+}
+
+.mk-summary-item {
+	flex: 1;
+	min-width: 100px;
+}
+
+.mk-summary-item .label-text {
+	font-size: 11px;
+	color: #6c757d;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.mk-summary-item .value-text {
+	font-size: 18px;
+	font-weight: 600;
+	color: #333;
+}
+
+.mk-batch-list-container {
+	max-height: 65vh;
+	overflow-y: auto;
+}
+
+#mk_batch_tabs {
+	margin-top: 15px;
+}
+
+.tab-content {
+	padding: 15px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-top: none;
+	border-radius: 0 0 8px 8px;
+	min-height: 200px;
+}
+
+.table-responsive {
+	max-height: 300px;
+	overflow-y: auto;
+}
+</style>
+
+<div class="melting-kiosk">
+	<div class="melting-kiosk-header">
+		<div class="form-inline">
+			<label class="control-label" style="margin-right: 8px; font-weight: 600;">Furnace</label>
+			<select id="mk_furnace_select" class="form-control"></select>
+			<label class="control-label" style="margin: 0 8px 0 16px; font-weight: 600;">Date</label>
+			<input type="date" id="mk_plan_date" class="form-control">
+			<button class="btn btn-default" id="mk_btn_refresh" style="margin-left: 10px;">
+				<i class="fa fa-refresh"></i> Refresh
+			</button>
+		</div>
+		<button class="btn btn-primary btn-lg" id="mk_btn_new_batch">
+			<i class="fa fa-plus"></i> Start New Melting Batch
+		</button>
+	</div>
+
+	<div class="row melting-kiosk-body">
+		<div class="col-sm-4">
+			<h4 style="margin-bottom: 15px;">
+				<i class="fa fa-list"></i> Todays Batches
+			</h4>
+			<div id="mk_batch_list_container" class="mk-batch-list-container"></div>
+		</div>
+
+		<div class="col-sm-8">
+			<h4 id="mk_batch_title" style="margin-bottom: 10px;">
+				<i class="fa fa-fire"></i> No batch selected
+			</h4>
+			
+			<div id="mk_batch_summary" class="mk-summary-card">
+				<div class="text-center text-muted" style="padding: 20px;">
+					Select a batch from the list to view details
+				</div>
+			</div>
+
+			<div class="mk-big-buttons" id="mk_action_buttons" style="display: none;">
+				<button class="btn btn-success btn-lg" id="mk_btn_burner_on">
+					<i class="fa fa-fire"></i> Burner Start
+				</button>
+				<button class="btn btn-info btn-lg" id="mk_btn_fluxing">
+					<i class="fa fa-flask"></i> Fluxing
+				</button>
+				<button class="btn btn-warning btn-lg" id="mk_btn_sample">
+					<i class="fa fa-eyedropper"></i> Sample
+				</button>
+				<button class="btn btn-default btn-lg" id="mk_btn_correction">
+					<i class="fa fa-plus-circle"></i> Correction
+				</button>
+				<button class="btn btn-primary btn-lg" id="mk_btn_ready_transfer">
+					<i class="fa fa-check-circle"></i> Ready for Transfer
+				</button>
+			</div>
+
+			<ul class="nav nav-tabs" id="mk_batch_tabs">
+				<li class="active"><a data-toggle="tab" href="#mk_tab_raw">
+					<i class="fa fa-cubes"></i> Raw Material
+				</a></li>
+				<li><a data-toggle="tab" href="#mk_tab_process">
+					<i class="fa fa-list-ol"></i> Process Log
+				</a></li>
+				<li><a data-toggle="tab" href="#mk_tab_samples">
+					<i class="fa fa-flask"></i> Spectro Samples
+				</a></li>
+				<li><a data-toggle="tab" href="#mk_tab_transfer">
+					<i class="fa fa-truck"></i> Transfer
+				</a></li>
+			</ul>
+
+			<div class="tab-content">
+				<div id="mk_tab_raw" class="tab-pane fade in active">
+					<div style="margin-bottom: 15px;">
+						<button class="btn btn-default" id="mk_btn_add_rm">
+							<i class="fa fa-plus"></i> Scan / Add Raw Material
+						</button>
+						<button class="btn btn-success" id="mk_btn_charging_complete">
+							<i class="fa fa-check"></i> Charging Complete
+						</button>
+					</div>
+					<div id="mk_raw_table" class="table-responsive"></div>
+				</div>
+
+				<div id="mk_tab_process" class="tab-pane fade">
+					<div id="mk_process_table" class="table-responsive"></div>
+				</div>
+
+				<div id="mk_tab_samples" class="tab-pane fade">
+					<div id="mk_samples_table" class="table-responsive"></div>
+				</div>
+
+				<div id="mk_tab_transfer" class="tab-pane fade">
+					<div id="mk_transfer_form"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

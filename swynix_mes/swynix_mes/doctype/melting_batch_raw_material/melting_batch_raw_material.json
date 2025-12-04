@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-04 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "row_index",
+  "ingredient_type",
+  "ingredient",
+  "item_code",
+  "item_name",
+  "column_break_details",
+  "batch_no",
+  "source_bin",
+  "bucket_no",
+  "qty_kg",
+  "is_correction"
+ ],
+ "fields": [
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sr No"
+  },
+  {
+   "fieldname": "ingredient_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Ingredient Type",
+   "options": "Primary Ingot\nPlant Scrap\nEC Scrap\nSecondary Scrap\nDross Ingot\nFlux\nAdditive\nCorrection Element\nOther"
+  },
+  {
+   "fieldname": "ingredient",
+   "fieldtype": "Link",
+   "label": "Ingredient",
+   "options": "Ingredient Master"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch / Heat / Lot"
+  },
+  {
+   "fieldname": "source_bin",
+   "fieldtype": "Link",
+   "label": "Source Bin",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "bucket_no",
+   "fieldtype": "Data",
+   "label": "Bucket / Charge No"
+  },
+  {
+   "fieldname": "qty_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty (kg)",
+   "precision": "3",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_correction",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Correction Charge"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-04 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Batch Raw Material",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+

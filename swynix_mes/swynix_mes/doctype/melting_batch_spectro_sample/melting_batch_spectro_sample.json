@@ -1,0 +1,137 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-04 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sample_id",
+  "sample_time",
+  "column_break_elements1",
+  "si_percent",
+  "fe_percent",
+  "cu_percent",
+  "mn_percent",
+  "column_break_elements2",
+  "mg_percent",
+  "zn_percent",
+  "ti_percent",
+  "al_percent",
+  "column_break_status",
+  "result_status",
+  "correction_required",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "sample_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sample ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sample_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Sample Time"
+  },
+  {
+   "fieldname": "column_break_elements1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "si_percent",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Si %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "fe_percent",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Fe %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "cu_percent",
+   "fieldtype": "Float",
+   "label": "Cu %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "mn_percent",
+   "fieldtype": "Float",
+   "label": "Mn %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "column_break_elements2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mg_percent",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Mg %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "zn_percent",
+   "fieldtype": "Float",
+   "label": "Zn %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "ti_percent",
+   "fieldtype": "Float",
+   "label": "Ti %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "al_percent",
+   "fieldtype": "Float",
+   "label": "Al %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "result_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Result Status",
+   "options": "Pending\nWithin Limit\nOut of Limit"
+  },
+  {
+   "default": "0",
+   "fieldname": "correction_required",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Correction Required"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-04 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Batch Spectro Sample",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+

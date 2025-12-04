@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "",
+ "content": "[{\"id\":\"Yro-6AWk58\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>MES</b></span>\",\"col\":12}},{\"id\":\"EqdZM5EhBt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"PPC Caster Kiosk\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Kiosk\",\"col\":3}},{\"id\":\"cg7BkM_KcN\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Kiosk\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"hn2ZFCeJZE\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}}]",
  "creation": "2025-11-27 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,8 +12,38 @@
  "indicator_color": "",
  "is_hidden": 0,
  "label": "Swynix MES",
- "links": [],
- "modified": "2025-12-04 19:47:49.394329",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift",
+   "link_count": 0,
+   "link_to": "Shift Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift",
+   "link_count": 0,
+   "link_to": "Shift Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-12-04 20:36:17.539926",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Swynix MES",
@@ -25,6 +55,20 @@
  "restrict_to_domain": "",
  "roles": [],
  "sequence_id": 30.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "PPC Caster Kiosk",
+   "link_to": "ppc-caster-kiosk",
+   "type": "Page"
+  },
+  {
+   "doc_view": "List",
+   "label": "Melting Kiosk",
+   "link_to": "melting-kiosk",
+   "type": "Page"
+  }
+ ],
  "title": "Swynix MES"
 }
