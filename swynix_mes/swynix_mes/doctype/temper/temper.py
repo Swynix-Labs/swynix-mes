@@ -163,3 +163,4 @@ def validate_temper_alloy_gauge(temper, alloy, gauge_mm):
 	return {"valid": True, "message": "Valid"}
 
 
+

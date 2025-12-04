@@ -9,3 +9,4 @@ class TemperAlloyMapping(Document):
 	pass
 
 
+
