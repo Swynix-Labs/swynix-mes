@@ -34,7 +34,12 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
+ "links": [
+  {
+   "link_doctype": "Alloy Chemical Composition Master",
+   "link_fieldname": "alloy"
+  }
+ ],
  "modified": "2025-11-29 12:01:28.228437",
  "modified_by": "Administrator",
  "module": "Swynix MES",

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"MwsxBWnUBn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"id\":\"Gk66vqlTis\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"id\":\"MclDJYaasC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"id\":\"rGI8hLLthV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"v3iCsHuWP2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters &amp; Operations</b></span>\",\"col\":12}},{\"id\":\"c8Ww0CqrZQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"id\":\"AuhbrYUJjm\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"t2AnsJAWaB\",\"type\":\"card\",\"data\":{\"card_name\":\"Quality\",\"col\":4}},{\"id\":\"qJS8asqe5M\",\"type\":\"card\",\"data\":{\"card_name\":\"Logistics & Tracking\",\"col\":4}}]",
+ "content": "[{\"id\":\"MwsxBWnUBn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\",\"col\":12}},{\"id\":\"Gk66vqlTis\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rolling Plan\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Batch\",\"col\":3}},{\"id\":\"MclDJYaasC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Log\",\"col\":3}},{\"id\":\"rGI8hLLthV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WIP Movement Log\",\"col\":3}},{\"id\":\"ChCmMst2025\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Alloy Chemical Composition Master\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"v3iCsHuWP2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters &amp; Operations</b></span>\",\"col\":12}},{\"id\":\"c8Ww0CqrZQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"id\":\"AuhbrYUJjm\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"t2AnsJAWaB\",\"type\":\"card\",\"data\":{\"card_name\":\"Quality\",\"col\":4}},{\"id\":\"qJS8asqe5M\",\"type\":\"card\",\"data\":{\"card_name\":\"Logistics & Tracking\",\"col\":4}}]",
  "creation": "2025-11-27 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -281,7 +281,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Planning",
-   "link_count": 5,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -335,6 +335,16 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Alloy Chemical Composition Master",
+   "link_count": 0,
+   "link_to": "Alloy Chemical Composition Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
  "modified": "2025-11-29 13:11:18.232391",
@@ -376,6 +386,13 @@
    "doc_view": "List",
    "label": "WIP Movement Log",
    "link_to": "WIP Movement Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Alloy Chemical Composition Master",
+   "link_to": "Alloy Chemical Composition Master",
    "type": "DocType"
   }
  ],
