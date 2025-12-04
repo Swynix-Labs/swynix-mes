@@ -111,23 +111,19 @@
 
 	<!-- Header: title + caster + date nav -->
 	<div class="ppc-header">
-		<div>
-			<h2>PPC Caster Kiosk</h2>
-			<small class="text-muted">Planner view similar to Google Calendar</small>
-		</div>
+
 
 		<div class="ppc-header-controls">
-			<label style="margin-right:4px;">Caster</label>
 			<select id="caster_select" class="form-control" style="width:180px;"></select>
-
-			<button class="btn btn-default btn-sm" id="btn_prev">&lt;</button>
-			<button class="btn btn-default btn-sm" id="btn_today">Today</button>
-			<button class="btn btn-default btn-sm" id="btn_next">&gt;</button>
-
 			<select id="view_select" class="form-control" style="width:140px;">
 				<option value="timeGridDay">Day View</option>
 				<option value="timeGridWeek" selected>Week View</option>
 			</select>
+			
+			<button class="btn btn-default btn-sm" id="btn_prev">&lt;</button>
+			<button class="btn btn-default btn-sm" id="btn_today">Today</button>
+			<button class="btn btn-default btn-sm" id="btn_next">&gt;</button>
+
 
 			<button class="btn btn-primary btn-sm" id="btn_create_plan">Create Plan</button>
 			<div class="dropdown" style="display:inline-block;">

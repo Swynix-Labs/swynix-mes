@@ -388,45 +388,83 @@ function open_create_plan_dialog() {
 				return;
 			}
 
-			// First check if this will affect existing plans
+			// 🚫 Prevent scheduling in the past (client-side check)
+			const now = frappe.datetime.now_datetime();
+			if (values.start_datetime && frappe.datetime.str_to_obj(values.start_datetime) < frappe.datetime.str_to_obj(now)) {
+				frappe.msgprint(__("You cannot create a plan in the past. Please choose a future time."));
+				return;
+			}
+
+			// Ask backend for preview: suggested slot + affected plans
 			frappe.call({
-				method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.check_caster_plan_impact",
+				method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.preview_plan_insertion",
 				args: {
 					caster: values.caster,
-					start_datetime: values.start_datetime
+					start_datetime: values.start_datetime,
+					end_datetime: values.end_datetime
 				},
 				freeze: true,
 				callback: function(r) {
-					const affected = r.message || [];
+					const preview = r.message || {};
+					const affected = preview.affected_plans || [];
 
-					// No future plans => safe to create directly
-					if (!affected.length) {
+					const req_start = frappe.datetime.str_to_user(preview.requested_start);
+					const req_end = frappe.datetime.str_to_user(preview.requested_end);
+					const sug_start = frappe.datetime.str_to_user(preview.suggested_start);
+					const sug_end = frappe.datetime.str_to_user(preview.suggested_end);
+
+					// Check if suggested slot is same as requested
+					const same_slot = 
+						preview.requested_start === preview.suggested_start &&
+						preview.requested_end === preview.suggested_end;
+
+					// If suggested == requested AND no affected plans -> create directly
+					if (same_slot && !affected.length) {
 						do_create_plan_from_dialog(d, values);
 						return;
 					}
 
-					// There ARE plans at/after this start => ask confirmation
+					// Build confirmation message
+					let msg = "";
+
+					if (!same_slot) {
+						msg += __(
+							"You requested <b>{0} – {1}</b>.<br>" +
+							"To maintain sequence, system suggests scheduling this plan at <b>{2} – {3}</b> (snapped to available slot).<br><br>",
+							[req_start, req_end, sug_start, sug_end]
+						);
+					} else {
+						msg += __(
+							"You are creating a plan at <b>{0} – {1}</b>.<br><br>",
+							[sug_start, sug_end]
+						);
+					}
+
 					const count = affected.length;
-					const first = affected[0];
+					if (count) {
+						msg += __(
+							"This will move <b>{0}</b> upcoming plan(s) for caster <b>{1}</b> forward by this duration.<br><br>",
+							[count, values.caster]
+						);
+						const first = affected[0];
+						msg += __(
+							"First affected plan: <b>{0}</b> ({1} – {2}).<br><br>",
+							[
+								first.name,
+								frappe.datetime.str_to_user(first.start_datetime),
+								frappe.datetime.str_to_user(first.end_datetime)
+							]
+						);
+					}
 
-					let msg = __(
-						"There are {0} existing plan(s) for {1} starting at or after this time. " +
-						"If you create this plan, all of them will be moved forward.<br><br>" +
-						"First affected plan: <b>{2}</b> ({3} – {4}).<br><br>" +
-						"Do you want to continue?",
-						[
-							count,
-							values.caster,
-							first.name,
-							frappe.datetime.str_to_user(first.start_datetime),
-							frappe.datetime.str_to_user(first.end_datetime)
-						]
-					);
+					msg += __("Do you want to continue?");
 
+					// On confirm, override values with suggested times and create
 					frappe.confirm(
 						msg,
 						() => {
-							// User said OK → actually create & shift
+							values.start_datetime = preview.suggested_start;
+							values.end_datetime = preview.suggested_end;
 							do_create_plan_from_dialog(d, values);
 						},
 						() => {

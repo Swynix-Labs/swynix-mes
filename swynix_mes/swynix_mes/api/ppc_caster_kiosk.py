@@ -3,13 +3,36 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, get_datetime
+from frappe.utils import getdate, get_datetime, now_datetime
 from frappe.utils.xlsxutils import make_xlsx
 from datetime import timedelta
 
 # Status lists for scheduling logic
 SHIFTABLE_STATUSES = ["Draft", "Planned", "Released to Melting"]
 LOCKED_STATUSES = ["In Process", "Completed"]
+
+
+def ensure_not_in_past(start_dt, label="plan"):
+	"""
+	Ensure the given start datetime is not before 'now'.
+	Raises if violated.
+	"""
+	if not start_dt:
+		return
+
+	now = now_datetime()
+	# Convert to comparable datetime
+	start_dt = get_datetime(start_dt)
+
+	if start_dt < now:
+		frappe.throw(
+			_("Cannot schedule this {0} in the past. "
+			  "Start time {1} is earlier than current time {2}.").format(
+				label,
+				frappe.format(start_dt, {"fieldtype": "Datetime"}),
+				frappe.format(now, {"fieldtype": "Datetime"})
+			)
+		)
 
 
 def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
@@ -94,6 +117,109 @@ def ensure_no_overlap_with_locked(caster, start_dt, end_dt, exclude_name=None):
 					p.status
 				)
 			)
+
+
+@frappe.whitelist()
+def preview_plan_insertion(caster, start_datetime, end_datetime):
+	"""
+	Given a requested [start_datetime, end_datetime] for a new plan on a caster,
+	suggest the actual slot the system will use and list the plans that will be shifted.
+
+	Logic:
+	- If the requested start overlaps an existing plan, snap the new start to
+	  the END of the previous plan in sequence.
+	- Duration is preserved = (requested_end - requested_start).
+	- We only shift plans with status in SHIFTABLE_STATUSES and start >= suggested_start.
+	- We never allow overlap with LOCKED_STATUSES (In Process / Completed); if that
+	  would happen, throw an error.
+	"""
+	if not (caster and start_datetime and end_datetime):
+		frappe.throw(_("Caster, Start Datetime and End Datetime are required."))
+
+	req_start = get_datetime(start_datetime)
+	req_end = get_datetime(end_datetime)
+	if req_end <= req_start:
+		frappe.throw(_("End Datetime must be after Start Datetime."))
+
+	# 🚫 No planning in the past
+	ensure_not_in_past(req_start, label="plan")
+
+	duration = req_end - req_start
+
+	# Fetch all non-cancelled plans on this caster
+	plans = frappe.get_all(
+		"PPC Casting Plan",
+		filters={
+			"caster": caster,
+			"status": ["!=", "Cancelled"],
+			"docstatus": ["<", 2],
+		},
+		fields=["name", "start_datetime", "end_datetime", "status"],
+		order_by="start_datetime asc",
+	)
+
+	suggested_start = req_start
+	suggested_end = req_end
+
+	# 1) Find if requested start lies INSIDE any existing plan
+	overlapped_plan = None
+	overlapped_index = None
+	for idx, p in enumerate(plans):
+		if p.start_datetime <= req_start < p.end_datetime:
+			overlapped_plan = p
+			overlapped_index = idx
+			break
+
+	if overlapped_plan is not None:
+		# If overlapped plan is LOCKED, we need to snap AFTER it
+		if overlapped_plan.status in LOCKED_STATUSES:
+			# Snap to end of the locked plan
+			suggested_start = overlapped_plan.end_datetime
+		else:
+			# Plan is shiftable - snap to end of previous plan if any
+			if overlapped_index > 0:
+				prev_plan = plans[overlapped_index - 1]
+				suggested_start = prev_plan.end_datetime
+			else:
+				# No previous plan → snap to start of this overlapped plan
+				suggested_start = overlapped_plan.start_datetime
+
+		suggested_end = suggested_start + duration
+
+	# 🚫 Ensure suggested slot is not in the past (even after snapping)
+	ensure_not_in_past(suggested_start, label="plan")
+
+	# 2) Ensure we don't overlap LOCKED plans with the suggested slot
+	ensure_no_overlap_with_locked(caster, suggested_start, suggested_end, exclude_name=None)
+
+	# 3) Compute affected plans = shiftable plans starting at/after suggested_start
+	affected = frappe.get_all(
+		"PPC Casting Plan",
+		filters={
+			"caster": caster,
+			"status": ["in", SHIFTABLE_STATUSES],
+			"docstatus": ["<", 2],
+			"start_datetime": [">=", suggested_start],
+		},
+		fields=[
+			"name",
+			"plan_type",
+			"start_datetime",
+			"end_datetime",
+			"product_item",
+			"downtime_type",
+			"status",
+		],
+		order_by="start_datetime asc",
+	)
+
+	return {
+		"requested_start": req_start,
+		"requested_end": req_end,
+		"suggested_start": suggested_start,
+		"suggested_end": suggested_end,
+		"affected_plans": affected,
+	}
 
 
 @frappe.whitelist()
@@ -314,6 +440,9 @@ def create_plan(data):
 	if end_dt <= start_dt:
 		frappe.throw(_("End Datetime must be after Start Datetime."))
 
+	# 🚫 No planning in the past
+	ensure_not_in_past(start_dt, label="plan")
+
 	# 1) Ensure we don't overlap any locked (In Process / Completed) plan
 	ensure_no_overlap_with_locked(data.caster, start_dt, end_dt, exclude_name=None)
 
@@ -397,8 +526,6 @@ def create_plan(data):
 @frappe.whitelist()
 def update_plan_times(plan_name, start_datetime, end_datetime):
 	"""Update start and end times for a plan (for drag-drop functionality)"""
-	from frappe.utils import get_datetime
-
 	if not plan_name:
 		frappe.throw(_("Plan name is required"))
 
@@ -410,6 +537,16 @@ def update_plan_times(plan_name, start_datetime, end_datetime):
 
 	if doc.status in ["Completed", "In Process"]:
 		frappe.throw(_("Cannot modify plan in status: {0}").format(doc.status))
+
+	# Validate new times
+	new_start_dt = get_datetime(start_datetime)
+	new_end_dt = get_datetime(end_datetime)
+
+	if new_end_dt <= new_start_dt:
+		frappe.throw(_("New End Datetime must be after New Start Datetime."))
+
+	# 🚫 Don't allow dragging plans into the past
+	ensure_not_in_past(new_start_dt, label="plan")
 
 	# If submitted, need to amend
 	if doc.docstatus == 1:
