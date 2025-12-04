@@ -1,0 +1,154 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:temper_code",
+ "creation": "2025-12-04 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "temper_details_section",
+  "temper_code",
+  "description",
+  "series",
+  "column_break_details",
+  "hardness_level",
+  "standard",
+  "is_active",
+  "remarks_section",
+  "remarks",
+  "alloy_mapping_section",
+  "alloy_mappings"
+ ],
+ "fields": [
+  {
+   "fieldname": "temper_details_section",
+   "fieldtype": "Section Break",
+   "label": "Temper Details"
+  },
+  {
+   "description": "Temper code like H14, H24, O, F (must be unique)",
+   "fieldname": "temper_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Temper Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Series",
+   "options": "\nO\nH\nF\nT\nW\nOther"
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Qualitative hardness / strain level",
+   "fieldname": "hardness_level",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Hardness Level",
+   "options": "\nFully Soft\nQuarter Hard\nHalf Hard\nFull Hard\nExtra Hard\nOther"
+  },
+  {
+   "description": "Which standard this temper definition follows",
+   "fieldname": "standard",
+   "fieldtype": "Select",
+   "label": "Standard",
+   "options": "\nIS\nEN\nASTM\nISO\nOther"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Long Text",
+   "label": "Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "alloy_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Alloy Mapping"
+  },
+  {
+   "description": "Map compatible alloys and gauge ranges for this temper",
+   "fieldname": "alloy_mappings",
+   "fieldtype": "Table",
+   "label": "Alloy Mappings",
+   "options": "Temper Alloy Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-04 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Temper",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1
+  }
+ ],
+ "search_fields": "temper_code,description,series",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "temper_code",
+ "track_changes": 1
+}
+

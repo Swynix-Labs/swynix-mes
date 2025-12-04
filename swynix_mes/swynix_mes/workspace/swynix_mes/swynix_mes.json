@@ -291,10 +291,50 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Planning",
-   "link_count": 6,
+   "link_count": 10,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Temper",
+   "link_count": 0,
+   "link_to": "Temper",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PPC Casting Plan",
+   "link_count": 0,
+   "link_to": "PPC Casting Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "PPC Caster Kiosk",
+   "link_count": 0,
+   "link_to": "ppc-caster-kiosk",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Charge Mix Ratio",
+   "link_count": 0,
+   "link_to": "Charge Mix Ratio",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
    "hidden": 0,

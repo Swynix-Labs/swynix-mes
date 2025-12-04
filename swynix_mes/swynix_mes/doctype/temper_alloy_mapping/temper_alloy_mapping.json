@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-04 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "alloy",
+  "min_gauge_mm",
+  "max_gauge_mm",
+  "column_break_settings",
+  "preferred",
+  "remark"
+ ],
+ "fields": [
+  {
+   "fieldname": "alloy",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Alloy",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "description": "Minimum gauge allowed for this temper+alloy",
+   "fieldname": "min_gauge_mm",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Min Gauge (mm)",
+   "precision": "3"
+  },
+  {
+   "description": "Maximum gauge allowed for this temper+alloy",
+   "fieldname": "max_gauge_mm",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Max Gauge (mm)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_settings",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Mark as preferred alloy-temper combination",
+   "fieldname": "preferred",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Preferred"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Small Text",
+   "label": "Remark"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-04 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Temper Alloy Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+

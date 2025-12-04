@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-04 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "ingredient",
+  "ingredient_name",
+  "item_group",
+  "column_break_proportion",
+  "proportion_type",
+  "exact_pct",
+  "min_pct",
+  "max_pct",
+  "default_pct",
+  "column_break_settings",
+  "mandatory",
+  "sequence",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "ingredient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Ingredient",
+   "options": "Ingredient Master",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "ingredient.ingredient_name",
+   "fieldname": "ingredient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Ingredient Name",
+   "read_only": 1
+  },
+  {
+   "description": "Must be one of the allowed Item Groups for this Ingredient",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "options": "Item Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_proportion",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Exact",
+   "fieldname": "proportion_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Proportion Type",
+   "options": "Exact\nRange",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.proportion_type=='Exact'",
+   "fieldname": "exact_pct",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Exact %",
+   "precision": "2"
+  },
+  {
+   "depends_on": "eval:doc.proportion_type=='Range'",
+   "fieldname": "min_pct",
+   "fieldtype": "Float",
+   "label": "Min %",
+   "precision": "2"
+  },
+  {
+   "depends_on": "eval:doc.proportion_type=='Range'",
+   "fieldname": "max_pct",
+   "fieldtype": "Float",
+   "label": "Max %",
+   "precision": "2"
+  },
+  {
+   "description": "Suggested default percentage",
+   "fieldname": "default_pct",
+   "fieldtype": "Float",
+   "label": "Default %",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_settings",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Must this ingredient appear in melt?",
+   "fieldname": "mandatory",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Mandatory"
+  },
+  {
+   "description": "Sorting order (auto-assigned if empty)",
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-04 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Charge Mix Ratio Ingredient",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+

@@ -1,0 +1,361 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-12-04 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "plan_info_section",
+  "naming_series",
+  "cast_no",
+  "plan_type",
+  "column_break_info",
+  "plan_date",
+  "shift",
+  "status",
+  "schedule_section",
+  "caster",
+  "furnace",
+  "column_break_schedule",
+  "start_datetime",
+  "end_datetime",
+  "duration_minutes",
+  "block_color",
+  "casting_details_section",
+  "product_item",
+  "width_mm",
+  "alloy",
+  "column_break_casting",
+  "temper",
+  "final_gauge_mm",
+  "planned_weight_mt",
+  "charge_mix_recipe",
+  "downtime_section",
+  "downtime_type",
+  "downtime_reason",
+  "customer_section",
+  "customer",
+  "sales_orders",
+  "mes_linkage_section",
+  "melting_batch",
+  "mother_coil",
+  "notes_section",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "plan_info_section",
+   "fieldtype": "Section Break",
+   "label": "Plan Info"
+  },
+  {
+   "default": "CAST-PLAN-.YYYY.-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "CAST-PLAN-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "description": "Human-readable cast number; auto-set from name if blank",
+   "fieldname": "cast_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cast No"
+  },
+  {
+   "default": "Casting",
+   "fieldname": "plan_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Plan Type",
+   "options": "Casting\nDowntime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "plan_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Plan Date"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Shift",
+   "options": "\nA\nB\nC"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nPlanned\nReleased to Melting\nIn Process\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule / Time Blocking"
+  },
+  {
+   "fieldname": "caster",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Caster",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "label": "Furnace",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "column_break_schedule",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Start Datetime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "End Datetime",
+   "reqd": 1
+  },
+  {
+   "description": "Auto-calculated from start/end times",
+   "fieldname": "duration_minutes",
+   "fieldtype": "Int",
+   "label": "Duration (Minutes)",
+   "read_only": 1
+  },
+  {
+   "description": "Optional hex color for frontend UI display",
+   "fieldname": "block_color",
+   "fieldtype": "Data",
+   "label": "Block Color"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "fieldname": "casting_details_section",
+   "fieldtype": "Section Break",
+   "label": "Casting Details"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "fieldname": "product_item",
+   "fieldtype": "Link",
+   "label": "Product Item",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Strip/coil width in mm",
+   "fieldname": "width_mm",
+   "fieldtype": "Float",
+   "label": "Width (mm)",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
+   "precision": "2"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Alloy item - must be under Item Group 'Alloy'",
+   "fieldname": "alloy",
+   "fieldtype": "Link",
+   "label": "Alloy",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_casting",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "fieldname": "temper",
+   "fieldtype": "Link",
+   "label": "Temper",
+   "options": "Temper"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Final thickness in mm",
+   "fieldname": "final_gauge_mm",
+   "fieldtype": "Float",
+   "label": "Final Gauge (mm)",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
+   "precision": "3"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Planned cast weight in MT",
+   "fieldname": "planned_weight_mt",
+   "fieldtype": "Float",
+   "label": "Planned Weight (MT)",
+   "precision": "3"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Charge Mix Ratio recipe - auto-linked by alloy if not set",
+   "fieldname": "charge_mix_recipe",
+   "fieldtype": "Link",
+   "label": "Charge Mix Recipe",
+   "options": "Charge Mix Ratio"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Downtime'",
+   "fieldname": "downtime_section",
+   "fieldtype": "Section Break",
+   "label": "Downtime Details"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Downtime'",
+   "fieldname": "downtime_type",
+   "fieldtype": "Select",
+   "label": "Downtime Type",
+   "mandatory_depends_on": "eval:doc.plan_type=='Downtime'",
+   "options": "\nRoll Change\nScheduled Maintenance\nBreakdown\nTrial\nOther"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Downtime'",
+   "fieldname": "downtime_reason",
+   "fieldtype": "Small Text",
+   "label": "Downtime Reason"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer / Sales Mapping"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "description": "Primary customer - auto-set from first SO if not given",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "eval:doc.plan_type=='Casting'",
+   "fieldname": "sales_orders",
+   "fieldtype": "Table",
+   "label": "Sales Orders",
+   "options": "PPC Casting Plan SO"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "mes_linkage_section",
+   "fieldtype": "Section Break",
+   "label": "MES / Production Linkage"
+  },
+  {
+   "description": "Actual melting batch produced from this plan",
+   "fieldname": "melting_batch",
+   "fieldtype": "Link",
+   "label": "Melting Batch",
+   "options": "Melting Batch"
+  },
+  {
+   "description": "Mother coil record produced",
+   "fieldname": "mother_coil",
+   "fieldtype": "Link",
+   "label": "Mother Coil",
+   "options": "Coil"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Long Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "PPC Casting Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-04 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "PPC Casting Plan",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "cast_no,plan_type,caster,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "cast_no",
+ "track_changes": 1
+}
+
