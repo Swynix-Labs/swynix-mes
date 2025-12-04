@@ -35,15 +35,65 @@ def ensure_not_in_past(start_dt, label="plan"):
 		)
 
 
+def compute_shift_window_and_delta(caster, new_start, new_end):
+	"""
+	For a new plan [new_start, new_end] on a caster, compute:
+	- shift_from: the earliest start_datetime of any SHIFTABLE plan >= new_start
+	- delta_seconds: max(0, (new_end - shift_from).total_seconds())
+
+	If there is no future shiftable plan, returns (None, 0) → no shift.
+
+	Example:
+		P1: 17:00–21:00
+		New: 15:00–19:00
+		first_future_start = 17:00 → delta = 19:00–17:00 = 2h
+		New stays 15:00–19:00, P1 becomes 19:00–23:00.
+	"""
+	if not caster or not (new_start and new_end):
+		return None, 0
+
+	new_start = get_datetime(new_start)
+	new_end = get_datetime(new_end)
+
+	# Get earliest shiftable plan starting at/after new_start
+	first_future = frappe.db.get_value(
+		"PPC Casting Plan",
+		{
+			"caster": caster,
+			"status": ["in", SHIFTABLE_STATUSES],
+			"start_datetime": [">=", new_start],
+		},
+		"start_datetime",
+		order_by="start_datetime asc",
+	)
+
+	if not first_future:
+		return None, 0
+
+	first_future = get_datetime(first_future)
+	delta = (new_end - first_future).total_seconds()
+
+	if delta <= 0:
+		# New plan ends before or exactly at first_future_start
+		# → no need to shift anything
+		return None, 0
+
+	return first_future, int(delta)
+
+
 def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
 	"""
-	Shift all *not-started* PPC Casting Plans for a caster that start on/after `from_datetime`
-	forward by `delta_seconds`.
+	Shift all *shiftable* PPC Casting Plans for a caster that start on/after `from_datetime`
+	forward by `delta_seconds`. Duration is preserved.
 
 	- We only shift plans whose status is in SHIFTABLE_STATUSES.
 	- We never touch In Process / Completed plans.
+	- Both start_datetime and end_datetime are shifted by the same delta
+	  to preserve the original plan duration.
+
+	This is a "dumb shifter" - the smart logic lives in compute_shift_window_and_delta().
 	"""
-	if not caster or not delta_seconds:
+	if not caster or not delta_seconds or not from_datetime:
 		return
 
 	delta = timedelta(seconds=int(delta_seconds))
@@ -63,8 +113,9 @@ def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
 		if exclude_name and p.name == exclude_name:
 			continue
 
-		new_start = p.start_datetime + delta
-		new_end = p.end_datetime + delta
+		# ✅ Preserve duration: shift both start and end by the same delta
+		new_start = p.start_datetime + delta  # old_start + delta
+		new_end = p.end_datetime + delta      # old_end + delta (NOT recalculated!)
 
 		frappe.db.set_value(
 			"PPC Casting Plan",
@@ -162,27 +213,51 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 	suggested_end = req_end
 
 	# 1) Find if requested start lies INSIDE any existing plan
-	overlapped_plan = None
 	overlapped_index = None
 	for idx, p in enumerate(plans):
 		if p.start_datetime <= req_start < p.end_datetime:
-			overlapped_plan = p
 			overlapped_index = idx
 			break
 
-	if overlapped_plan is not None:
-		# If overlapped plan is LOCKED, we need to snap AFTER it
-		if overlapped_plan.status in LOCKED_STATUSES:
-			# Snap to end of the locked plan
-			suggested_start = overlapped_plan.end_datetime
+	if overlapped_index is not None:
+		# New request falls inside some existing plan
+		overlapped = plans[overlapped_index]
+		now = now_datetime()
+
+		# Check if the overlapped plan already started (in the past)
+		if overlapped.start_datetime < now:
+			# Plan already started - we CANNOT insert before it
+			# Snap to the END of this running plan
+			suggested_start = overlapped.end_datetime
+			# If the end is also in the past (shouldn't happen for active plans),
+			# snap to now
+			if suggested_start < now:
+				suggested_start = now
 		else:
-			# Plan is shiftable - snap to end of previous plan if any
+			# Plan hasn't started yet - we CAN shift it
 			if overlapped_index > 0:
+				# There IS a previous plan → snap to end of previous plan
+				# Example:
+				#   P1: 01:00–04:00
+				#   P2: 04:00–10:00
+				#   New: 06:00–07:00  -> becomes 04:00–05:00
 				prev_plan = plans[overlapped_index - 1]
 				suggested_start = prev_plan.end_datetime
+				# But if that previous plan's end is in the past, use now
+				if suggested_start < now:
+					suggested_start = now
 			else:
-				# No previous plan → snap to start of this overlapped plan
-				suggested_start = overlapped_plan.start_datetime
+				# This is the FIRST plan and we are inside it.
+				# We want the NEW PLAN to go BEFORE this existing one,
+				# not after it and not trim it.
+				#
+				# Example:
+				#   P1: 13:00–+1d 13:00
+				#   New: 16:00–17:00
+				# Desired:
+				#   New: 13:00–14:00
+				#   P1: moves to 14:00–+1d 14:00
+				suggested_start = overlapped.start_datetime
 
 		suggested_end = suggested_start + duration
 
@@ -192,32 +267,44 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 	# 2) Ensure we don't overlap LOCKED plans with the suggested slot
 	ensure_no_overlap_with_locked(caster, suggested_start, suggested_end, exclude_name=None)
 
-	# 3) Compute affected plans = shiftable plans starting at/after suggested_start
-	affected = frappe.get_all(
-		"PPC Casting Plan",
-		filters={
-			"caster": caster,
-			"status": ["in", SHIFTABLE_STATUSES],
-			"docstatus": ["<", 2],
-			"start_datetime": [">=", suggested_start],
-		},
-		fields=[
-			"name",
-			"plan_type",
-			"start_datetime",
-			"end_datetime",
-			"product_item",
-			"downtime_type",
-			"status",
-		],
-		order_by="start_datetime asc",
+	# 3) Compute where shift will start & by how much (smart delta calculation)
+	shift_from, delta_seconds = compute_shift_window_and_delta(
+		caster=caster,
+		new_start=suggested_start,
+		new_end=suggested_end,
 	)
+
+	# 4) Compute affected plans = shiftable plans starting at/after shift_from
+	if shift_from and delta_seconds > 0:
+		affected = frappe.get_all(
+			"PPC Casting Plan",
+			filters={
+				"caster": caster,
+				"status": ["in", SHIFTABLE_STATUSES],
+				"docstatus": ["<", 2],
+				"start_datetime": [">=", shift_from],
+			},
+			fields=[
+				"name",
+				"plan_type",
+				"start_datetime",
+				"end_datetime",
+				"product_item",
+				"downtime_type",
+				"status",
+			],
+			order_by="start_datetime asc",
+		)
+	else:
+		affected = []
 
 	return {
 		"requested_start": req_start,
 		"requested_end": req_end,
 		"suggested_start": suggested_start,
 		"suggested_end": suggested_end,
+		"shift_from": shift_from,
+		"shift_delta_seconds": delta_seconds,
 		"affected_plans": affected,
 	}
 
@@ -434,9 +521,12 @@ def create_plan(data):
 		frappe.throw(_("End Datetime is required"))
 
 	# Convert datetime strings to datetime objects
+	# (These should be the SUGGESTED times from preview_plan_insertion)
 	start_dt = get_datetime(data.start_datetime)
 	end_dt = get_datetime(data.end_datetime)
 
+	if not (start_dt and end_dt):
+		frappe.throw(_("Start Datetime and End Datetime are required."))
 	if end_dt <= start_dt:
 		frappe.throw(_("End Datetime must be after Start Datetime."))
 
@@ -446,16 +536,25 @@ def create_plan(data):
 	# 1) Ensure we don't overlap any locked (In Process / Completed) plan
 	ensure_no_overlap_with_locked(data.caster, start_dt, end_dt, exclude_name=None)
 
-	# 2) Compute duration and shift only not-started future plans
-	duration_seconds = (end_dt - start_dt).total_seconds()
-	shift_future_plans(
+	# 2) Compute smart shift window & amount
+	# This finds the first shiftable plan >= start_dt and computes
+	# delta = max(0, end_dt - first_plan_start)
+	shift_from, delta_seconds = compute_shift_window_and_delta(
 		caster=data.caster,
-		from_datetime=start_dt,
-		delta_seconds=duration_seconds,
-		exclude_name=None,
+		new_start=start_dt,
+		new_end=end_dt,
 	)
 
-	# 3) Create the new plan
+	# 3) 🔁 Shift existing future plans only if needed
+	if shift_from and delta_seconds > 0:
+		shift_future_plans(
+			caster=data.caster,
+			from_datetime=shift_from,
+			delta_seconds=delta_seconds,
+			exclude_name=None,
+		)
+
+	# 4) 🆕 Now insert the new plan at start_dt–end_dt
 	doc = frappe.new_doc("PPC Casting Plan")
 
 	# Common fields

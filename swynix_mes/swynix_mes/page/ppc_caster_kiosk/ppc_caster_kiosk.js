@@ -407,6 +407,7 @@ function open_create_plan_dialog() {
 				callback: function(r) {
 					const preview = r.message || {};
 					const affected = preview.affected_plans || [];
+					const shift_delta_seconds = preview.shift_delta_seconds || 0;
 
 					const req_start = frappe.datetime.str_to_user(preview.requested_start);
 					const req_end = frappe.datetime.str_to_user(preview.requested_end);
@@ -442,9 +443,27 @@ function open_create_plan_dialog() {
 
 					const count = affected.length;
 					if (count) {
+						// Format shift delta for display
+						let shift_display = "";
+						if (shift_delta_seconds > 0) {
+							const hours = Math.floor(shift_delta_seconds / 3600);
+							const minutes = Math.floor((shift_delta_seconds % 3600) / 60);
+							if (hours > 0 && minutes > 0) {
+								shift_display = __("{0}h {1}m", [hours, minutes]);
+							} else if (hours > 0) {
+								shift_display = __("{0} hour(s)", [hours]);
+							} else {
+								shift_display = __("{0} minute(s)", [minutes]);
+							}
+						}
+
+						const shift_from_display = preview.shift_from 
+							? frappe.datetime.str_to_user(preview.shift_from) 
+							: sug_start;
+
 						msg += __(
-							"This will move <b>{0}</b> upcoming plan(s) for caster <b>{1}</b> forward by this duration.<br><br>",
-							[count, values.caster]
+							"This will move <b>{0}</b> plan(s) starting from <b>{1}</b> forward by <b>{2}</b>.<br><br>",
+							[count, shift_from_display, shift_display]
 						);
 						const first = affected[0];
 						msg += __(
