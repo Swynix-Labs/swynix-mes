@@ -97,8 +97,11 @@ def start_batch_from_cast_plan(plan_name):
     batch.furnace = getattr(plan, "furnace", None) or getattr(plan, "caster", None)
     batch.alloy = getattr(plan, "alloy", None)
     batch.product_item = getattr(plan, "product_item", None)
+    batch.temper = getattr(plan, "temper", None)
     batch.charge_mix_recipe = getattr(plan, "charge_mix_recipe", None)
     batch.planned_weight_mt = getattr(plan, "planned_weight_mt", None)
+    batch.planned_width_mm = getattr(plan, "planned_width_mm", None)
+    batch.planned_gauge_mm = getattr(plan, "planned_gauge_mm", None)
     batch.plan_date = getdate(plan.start_datetime) if plan.start_datetime else getdate()
     batch.ppc_casting_plan = plan.name
     batch.status = "Charging"
@@ -126,7 +129,14 @@ def start_batch_from_cast_plan(plan_name):
 
     return {
         "melting_batch": batch.name,
+        "melting_batch_id": batch.melting_batch_id or batch.name,
         "plan": plan.name,
+        "alloy": batch.alloy,
+        "product_item": batch.product_item,
+        "temper": batch.temper,
+        "planned_width_mm": batch.planned_width_mm,
+        "planned_gauge_mm": batch.planned_gauge_mm,
+        "planned_weight_mt": batch.planned_weight_mt,
     }
 
 
@@ -167,6 +177,9 @@ def get_batches_for_furnace(furnace, for_date=None):
             "status",
             "alloy",
             "product_item",
+            "temper",
+            "planned_width_mm",
+            "planned_gauge_mm",
             "planned_weight_mt",
             "charged_weight_mt",
             "tapped_weight_mt",
@@ -574,8 +587,11 @@ def get_batch_detail(batch_name):
         "furnace": doc.furnace,
         "alloy": doc.alloy,
         "product_item": doc.product_item,
+        "temper": getattr(doc, "temper", None),
         "charge_mix_recipe": recipe_name,
         "plan_date": str(doc.plan_date) if doc.plan_date else None,
+        "planned_width_mm": getattr(doc, "planned_width_mm", None),
+        "planned_gauge_mm": getattr(doc, "planned_gauge_mm", None),
         "planned_weight_mt": doc.planned_weight_mt,
         "charged_weight_mt": doc.charged_weight_mt,
         "tapped_weight_mt": doc.tapped_weight_mt,
@@ -604,8 +620,11 @@ def get_batch_detail(batch_name):
         "furnace": doc.furnace,
         "alloy": doc.alloy,
         "product_item": doc.product_item,
+        "temper": getattr(doc, "temper", None),
         "charge_mix_recipe": recipe_name,
         "plan_date": str(doc.plan_date) if doc.plan_date else None,
+        "planned_width_mm": getattr(doc, "planned_width_mm", None),
+        "planned_gauge_mm": getattr(doc, "planned_gauge_mm", None),
         "planned_weight_mt": doc.planned_weight_mt,
         "charged_weight_mt": doc.charged_weight_mt,
         "tapped_weight_mt": doc.tapped_weight_mt,

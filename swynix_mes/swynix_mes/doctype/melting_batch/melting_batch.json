@@ -15,9 +15,13 @@
   "column_break_batch_info",
   "alloy",
   "product_item",
+  "temper",
   "charge_mix_recipe",
   "plan_date",
   "status",
+  "casting_parameters_section",
+  "planned_width_mm",
+  "planned_gauge_mm",
   "weight_summary_section",
   "planned_weight_mt",
   "charged_weight_mt",
@@ -118,6 +122,12 @@
    "options": "Item"
   },
   {
+   "fieldname": "temper",
+   "fieldtype": "Link",
+   "label": "Temper",
+   "options": "Temper"
+  },
+  {
    "fieldname": "charge_mix_recipe",
    "fieldtype": "Link",
    "label": "Charge Mix Recipe",
@@ -138,6 +148,25 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Draft\nCharging\nMelting\nReady for Transfer\nTransferred\nCancelled"
+  },
+  {
+   "fieldname": "casting_parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Casting Parameters"
+  },
+  {
+   "description": "Cast width in mm (from casting plan)",
+   "fieldname": "planned_width_mm",
+   "fieldtype": "Float",
+   "label": "Cast Width (mm)",
+   "precision": "2"
+  },
+  {
+   "description": "Final gauge in mm (from casting plan)",
+   "fieldname": "planned_gauge_mm",
+   "fieldtype": "Float",
+   "label": "Final Gauge (mm)",
+   "precision": "3"
   },
   {
    "fieldname": "weight_summary_section",

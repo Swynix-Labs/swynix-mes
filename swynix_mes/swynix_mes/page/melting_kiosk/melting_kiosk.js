@@ -435,10 +435,11 @@ function render_batch_header(doc, batch, plan, recipe) {
 		planLink
 	);
 
-	// Get values from plan or batch
-	var planned_weight = (plan && plan.planned_weight_mt) || doc.planned_weight_mt;
-	var width_mm = (plan && plan.planned_width_mm) || "-";
-	var gauge_mm = (plan && plan.planned_gauge_mm) || "-";
+	// Get values from batch first, then fall back to plan
+	var planned_weight = doc.planned_weight_mt || (plan && plan.planned_weight_mt);
+	var width_mm = doc.planned_width_mm || (plan && plan.planned_width_mm) || "-";
+	var gauge_mm = doc.planned_gauge_mm || (plan && plan.planned_gauge_mm) || "-";
+	var temper = doc.temper || (plan && plan.temper) || "-";
 	var recipe_name = doc.charge_mix_recipe || (plan && plan.charge_mix_recipe) || "-";
 	
 	var planned = planned_weight ? flt(planned_weight, 3) + " MT" : "-";
@@ -452,17 +453,22 @@ function render_batch_header(doc, batch, plan, recipe) {
 		yield_style = "color: #d97706;";
 	}
 
-	// First row: Alloy, Product, Width, Gauge
+	// First row: Alloy, Product, Temper
 	var html = '<div class="mk-summary-grid">';
 	html += '<div class="summary-item"><div class="summary-label">Alloy</div><div class="summary-value">' + frappe.utils.escape_html(doc.alloy || "-") + '</div></div>';
 	html += '<div class="summary-item"><div class="summary-label">Product</div><div class="summary-value">' + frappe.utils.escape_html(doc.product_item || "-") + '</div></div>';
-	html += '<div class="summary-item"><div class="summary-label">Width</div><div class="summary-value">' + (width_mm !== "-" ? width_mm + ' mm' : "-") + '</div></div>';
-	html += '<div class="summary-item"><div class="summary-label">Gauge</div><div class="summary-value">' + (gauge_mm !== "-" ? gauge_mm + ' mm' : "-") + '</div></div>';
+	html += '<div class="summary-item"><div class="summary-label">Temper</div><div class="summary-value">' + frappe.utils.escape_html(temper) + '</div></div>';
 	html += '</div>';
 	
-	// Second row: Planned, Charged, Tapped, Yield
+	// Second row: Width, Gauge, Planned Weight
 	html += '<div class="mk-summary-grid" style="margin-top: 1px;">';
-	html += '<div class="summary-item"><div class="summary-label">Planned</div><div class="summary-value">' + planned + '</div></div>';
+	html += '<div class="summary-item"><div class="summary-label">Width (mm)</div><div class="summary-value">' + (width_mm !== "-" ? width_mm : "-") + '</div></div>';
+	html += '<div class="summary-item"><div class="summary-label">Gauge (mm)</div><div class="summary-value">' + (gauge_mm !== "-" ? gauge_mm : "-") + '</div></div>';
+	html += '<div class="summary-item"><div class="summary-label">Planned Weight</div><div class="summary-value">' + planned + '</div></div>';
+	html += '</div>';
+	
+	// Third row: Charged, Tapped, Yield
+	html += '<div class="mk-summary-grid" style="margin-top: 1px;">';
 	html += '<div class="summary-item"><div class="summary-label">Charged</div><div class="summary-value">' + charged + '</div></div>';
 	html += '<div class="summary-item"><div class="summary-label">Tapped</div><div class="summary-value">' + tapped + '</div></div>';
 	html += '<div class="summary-item"><div class="summary-label">Yield</div><div class="summary-value" style="' + yield_style + '">' + yield_pct + '</div></div>';

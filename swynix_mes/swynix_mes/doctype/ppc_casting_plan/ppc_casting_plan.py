@@ -97,11 +97,15 @@ class PPCCastingPlan(Document):
 		required_casting_fields = [
 			("product_item", "Product Item"),
 			("alloy", "Alloy"),
+			("temper", "Temper"),
+			("planned_width_mm", "Cast Width (mm)"),
+			("planned_gauge_mm", "Final Gauge (mm)"),
+			("planned_weight_mt", "Cast Weight (MT)"),
 		]
 
 		for field, label in required_casting_fields:
 			if not getattr(self, field, None):
-				frappe.throw(_("{0} is required for Casting plans.").format(label))
+				frappe.throw(_("{0} is mandatory for PPC Casting Plan.").format(label))
 
 		# Validate product_item belongs to Product item group
 		if self.product_item:

@@ -193,6 +193,7 @@
    "fieldname": "temper",
    "fieldtype": "Link",
    "label": "Temper",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "options": "Temper"
   },
   {
@@ -215,6 +216,7 @@
    "fieldname": "planned_width_mm",
    "fieldtype": "Float",
    "label": "Planned Width (mm)",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "2"
   },
   {
@@ -223,6 +225,7 @@
    "fieldname": "planned_gauge_mm",
    "fieldtype": "Float",
    "label": "Planned Gauge (mm)",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "3"
   },
   {
@@ -235,6 +238,7 @@
    "fieldname": "planned_weight_mt",
    "fieldtype": "Float",
    "label": "Planned Weight (MT)",
+   "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "3"
   },
   {

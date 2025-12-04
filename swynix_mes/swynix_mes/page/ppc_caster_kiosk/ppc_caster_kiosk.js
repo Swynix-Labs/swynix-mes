@@ -318,25 +318,29 @@ function open_create_plan_dialog() {
 				label: __('Temper'),
 				fieldtype: 'Link',
 				options: 'Temper',
-				depends_on: "eval:doc.plan_type=='Casting'"
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
 			},
 			{
 				fieldname: 'planned_width_mm',
-				label: __('Planned Width (mm)'),
+				label: __('Cast Width (mm)'),
 				fieldtype: 'Float',
-				depends_on: "eval:doc.plan_type=='Casting'"
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
 			},
 			{
 				fieldname: 'planned_gauge_mm',
-				label: __('Planned Gauge (mm)'),
+				label: __('Final Gauge (mm)'),
 				fieldtype: 'Float',
-				depends_on: "eval:doc.plan_type=='Casting'"
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
 			},
 			{
 				fieldname: 'planned_weight_mt',
-				label: __('Planned Weight (MT)'),
+				label: __('Cast Weight (MT)'),
 				fieldtype: 'Float',
-				depends_on: "eval:doc.plan_type=='Casting'"
+				depends_on: "eval:doc.plan_type=='Casting'",
+				mandatory_depends_on: "eval:doc.plan_type=='Casting'"
 			},
 
 			{ fieldname: 'section_final', fieldtype: 'Section Break', label: __('Final Parameters (Optional)') },
@@ -406,6 +410,25 @@ function open_create_plan_dialog() {
 			if (values.start_datetime && frappe.datetime.str_to_obj(values.start_datetime) < frappe.datetime.str_to_obj(now)) {
 				frappe.msgprint(__("You cannot create a plan in the past. Please choose a future time."));
 				return;
+			}
+
+			// Validate mandatory fields for Casting plans
+			if (values.plan_type === 'Casting') {
+				const required = [
+					['product_item', 'Product Item'],
+					['alloy', 'Alloy'],
+					['temper', 'Temper'],
+					['planned_width_mm', 'Cast Width (mm)'],
+					['planned_gauge_mm', 'Final Gauge (mm)'],
+					['planned_weight_mt', 'Cast Weight (MT)'],
+				];
+
+				for (let [key, label] of required) {
+					if (!values[key]) {
+						frappe.msgprint(__("{0} is required to create a casting plan.", [label]));
+						return;
+					}
+				}
 			}
 
 			// Ask backend for preview: suggested slot + affected plans
