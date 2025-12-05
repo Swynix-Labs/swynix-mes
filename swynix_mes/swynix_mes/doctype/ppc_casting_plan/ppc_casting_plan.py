@@ -19,6 +19,7 @@ class PPCCastingPlan(Document):
 		self.validate_required_fields()
 		self.validate_datetime_range()
 		self.calculate_duration()
+		self.set_planned_duration()  # Store original planned duration for rescheduling
 		self.auto_set_plan_date()
 		self.auto_set_defaults()
 
@@ -61,6 +62,34 @@ class PPCCastingPlan(Document):
 
 			if self.duration_minutes <= 0:
 				frappe.throw(_("Duration must be positive."))
+
+	def set_planned_duration(self):
+		"""
+		Store original planned duration in minutes.
+		
+		This is used for rescheduling when melting starts early/late.
+		The planned_duration_minutes field preserves the originally intended
+		duration even when start/end times are shifted.
+		
+		Rules:
+		- Only set if both start and end datetimes exist
+		- Only set if the plan hasn't started yet (status in Planned, Released)
+		- Once melting starts, the planned duration is locked
+		"""
+		from frappe.utils import get_datetime
+		
+		# Only update planned duration for plans that haven't started yet
+		if self.status not in SHIFTABLE_STATUSES:
+			return
+		
+		if self.start_datetime and self.end_datetime:
+			start = get_datetime(self.start_datetime)
+			end = get_datetime(self.end_datetime)
+			delta_min = (end - start).total_seconds() / 60.0
+			
+			# Store only if positive
+			if delta_min > 0:
+				self.planned_duration_minutes = delta_min
 
 	def auto_set_plan_date(self):
 		"""Auto set plan_date from start_datetime if missing"""
@@ -431,20 +460,31 @@ class PPCCastingPlan(Document):
 		Adjust future plans on the same caster when actual_end deviates from planned_end.
 		
 		This is a legacy wrapper for backward compatibility.
-		The actual shifting logic is now in shift_future_plans_for_caster.
+		The actual shifting logic is now in shift_future_plans_after.
 		"""
-		from swynix_mes.swynix_mes.utils.ppc_scheduler import adjust_future_plans_for_caster
-		adjust_future_plans_for_caster(self)
+		shift_future_plans_after(self)
 	
 	def shift_schedule_on_melting_start(self, actual_start_time=None):
 		"""
-		Shift this plan and future plans when melting starts at a different time than planned.
+		Re-anchor this plan when melting starts and shift future plans to prevent overlaps.
+		
+		This method:
+		1. Updates the plan's start time to the actual melting start
+		2. Recalculates end time using the original planned_duration_minutes
+		3. Sets melting_start and actual_start timestamps
+		4. Shifts all future plans for the same caster to remove overlaps
 		
 		Args:
 			actual_start_time: When melting actually started (defaults to now)
+		
+		Example:
+			Plan A: 12:00–13:00, Plan B: 13:00–14:00 (duration 60min each)
+			Melting for Plan B starts at 11:45.
+			→ Re-anchor Plan B to 11:45–12:45 (60min duration preserved)
+			→ Plan A remains at 12:00–13:00 (earlier, not affected)
+			→ Any plan overlapping with 11:45–12:45 gets pushed after 12:45
 		"""
 		from frappe.utils import now_datetime, get_datetime
-		from swynix_mes.swynix_mes.utils.ppc_scheduler import shift_future_plans_for_caster
 		
 		if not actual_start_time:
 			actual_start_time = now_datetime()
@@ -456,34 +496,36 @@ class PPCCastingPlan(Document):
 		
 		old_planned_start = get_datetime(self.start_datetime)
 		
-		# Calculate duration
-		duration = None
-		if self.end_datetime:
-			duration = get_datetime(self.end_datetime) - old_planned_start
-		
-		# Only shift if actual differs from planned
+		# Only re-anchor if actual differs from planned
 		if actual_start_time == old_planned_start:
 			return
 		
-		delta_seconds = (actual_start_time - old_planned_start).total_seconds()
+		# Get planned duration - use stored value or calculate from current times
+		duration_minutes = self.planned_duration_minutes
+		if not duration_minutes and self.end_datetime:
+			old_planned_end = get_datetime(self.end_datetime)
+			duration_minutes = (old_planned_end - old_planned_start).total_seconds() / 60.0
 		
-		# Update this plan's timing
+		if not duration_minutes:
+			duration_minutes = 60  # Default to 60 minutes if nothing else
+		
+		# Re-anchor this plan to the actual melting start
 		self.start_datetime = actual_start_time
-		if duration:
-			self.end_datetime = actual_start_time + duration
+		self.end_datetime = actual_start_time + timedelta(minutes=duration_minutes)
 		
+		# Set melting and actual start timestamps
 		self.melting_start = actual_start_time
-		self.actual_start = actual_start_time
-		self.status = "Melting"
+		if not self.actual_start:
+			self.actual_start = actual_start_time
+		
+		# Update status to Melting
+		if self.status in SHIFTABLE_STATUSES:
+			self.status = "Melting"
 		
 		self.save(ignore_permissions=True)
 		
-		# Shift future plans
-		shift_future_plans_for_caster(
-			casting_plan_name=self.name,
-			delta_seconds=delta_seconds,
-			from_time=old_planned_start
-		)
+		# Shift future plans to remove overlaps
+		shift_future_plans_after(self)
 
 
 @frappe.whitelist()
@@ -618,3 +660,217 @@ def get_so_items_for_order(doctype, txt, searchfield, start, page_len, filters):
 		""",
 		(sales_order, f"%{txt}%", f"%{txt}%", start, page_len)
 	)
+
+
+# ==================== SCHEDULE SHIFTING HELPERS ====================
+
+def shift_future_plans_after(current_plan):
+	"""
+	Ensure no overlaps for this caster after current_plan.
+	
+	This function is called when:
+	1. A plan is re-anchored on melting start
+	2. A plan's actual_end is set after coil completion
+	
+	Algorithm:
+	- Get all plans for same caster with start_datetime >= current_plan.start_datetime,
+	  excluding current_plan, ordered by start_datetime.
+	- For each next_plan:
+	    if next_plan.start_datetime < last_end:
+	        # push it forward to last_end, keeping its original duration
+	        if next_plan.planned_duration_minutes:
+	            next_plan.start_datetime = last_end
+	            next_plan.end_datetime = last_end + timedelta(minutes=next_plan.planned_duration_minutes)
+	        else:
+	            # fallback: keep same duration as before
+	            dur = next_plan.end_datetime - next_plan.start_datetime
+	            next_plan.start_datetime = last_end
+	            next_plan.end_datetime = last_end + dur
+	        next_plan.save()
+	        last_end = next_plan.end_datetime
+	    else:
+	        last_end = next_plan.end_datetime
+	
+	Example:
+	# Plan A: 12:00–13:00, Plan B: 13:00–14:00 (duration 60min each)
+	# Melting for Plan B starts at 11:45.
+	# → Re-anchor Plan B to 11:45–12:45 (60min)
+	# → Plan A remains at 12:00–13:00 (because it is earlier than current_plan's new start)
+	# If a later plan C is at 12:30–13:30, it will be pushed after 12:45 etc.
+	"""
+	from frappe.utils import get_datetime
+	
+	if not current_plan.caster or not current_plan.start_datetime or not current_plan.end_datetime:
+		return
+	
+	caster = current_plan.caster
+	last_end = get_datetime(current_plan.end_datetime)
+	
+	# Get all future plans for this caster that could potentially overlap
+	# We only shift plans that haven't started yet (SHIFTABLE_STATUSES)
+	future_plans = frappe.get_all(
+		"PPC Casting Plan",
+		filters={
+			"name": ["!=", current_plan.name],
+			"caster": caster,
+			"start_datetime": [">=", current_plan.start_datetime],
+			"status": ["in", SHIFTABLE_STATUSES],
+			"docstatus": ["<", 2],  # Not cancelled
+		},
+		fields=["name", "start_datetime", "end_datetime", "planned_duration_minutes"],
+		order_by="start_datetime asc",
+	)
+	
+	for row in future_plans:
+		next_plan = frappe.get_doc("PPC Casting Plan", row.name)
+		start = get_datetime(next_plan.start_datetime)
+		end = get_datetime(next_plan.end_datetime)
+		
+		if start < last_end:
+			# Need to push forward - there's an overlap
+			duration_min = next_plan.planned_duration_minutes
+			if not duration_min:
+				# Fallback: calculate duration from current times
+				duration_min = (end - start).total_seconds() / 60.0
+			
+			# Push forward to last_end
+			next_plan.start_datetime = last_end
+			next_plan.end_datetime = last_end + timedelta(minutes=duration_min)
+			next_plan.save(ignore_permissions=True)
+			
+			last_end = get_datetime(next_plan.end_datetime)
+		else:
+			# No overlap, but update last_end for subsequent plans
+			last_end = end
+	
+	frappe.db.commit()
+
+
+@frappe.whitelist()
+def start_melting_for_plan(plan_name, melting_batch_name=None, melt_start=None):
+	"""
+	Called from Melting Kiosk when operator starts melting for a PPC plan.
+	
+	This function:
+	1. Links the melting batch to the plan (if provided)
+	2. Updates plan status to "Melting"
+	3. Re-anchors the plan's time window based on planned_duration_minutes
+	4. Sets actual_start timestamp
+	5. Shifts all future plans for the caster to remove overlaps
+	
+	Args:
+		plan_name: Name of the PPC Casting Plan
+		melting_batch_name: Name of the linked Melting Batch (optional)
+		melt_start: When melting started (defaults to now)
+	
+	Returns:
+		dict with plan_name and updated timestamps
+	"""
+	from frappe.utils import now_datetime, get_datetime
+	
+	if not plan_name:
+		frappe.throw(_("Casting Plan is required."))
+	
+	plan = frappe.get_doc("PPC Casting Plan", plan_name)
+	
+	# Default melt_start = now
+	melt_start_dt = get_datetime(melt_start) if melt_start else now_datetime()
+	
+	# 1) Link melting batch if provided
+	if melting_batch_name:
+		plan.melting_batch = melting_batch_name
+	
+	# 2) Ensure planned_duration_minutes is set
+	if not plan.planned_duration_minutes:
+		if plan.start_datetime and plan.end_datetime:
+			start = get_datetime(plan.start_datetime)
+			end = get_datetime(plan.end_datetime)
+			plan.planned_duration_minutes = (end - start).total_seconds() / 60.0
+		else:
+			plan.planned_duration_minutes = 60  # Default fallback
+	
+	# 3) Re-anchor the plan to the actual melting start
+	if plan.planned_duration_minutes:
+		plan.start_datetime = melt_start_dt
+		plan.end_datetime = melt_start_dt + timedelta(minutes=plan.planned_duration_minutes)
+	
+	# 4) Set timestamps
+	if not plan.actual_start:
+		plan.actual_start = melt_start_dt
+	plan.melting_start = melt_start_dt
+	
+	# 5) Update status
+	if plan.status in SHIFTABLE_STATUSES:
+		plan.status = "Melting"
+	
+	plan.save(ignore_permissions=True)
+	
+	# 6) Shift future plans to remove overlaps
+	shift_future_plans_after(plan)
+	
+	frappe.db.commit()
+	
+	return {
+		"plan_name": plan.name,
+		"start_datetime": str(plan.start_datetime),
+		"end_datetime": str(plan.end_datetime),
+		"actual_start": str(plan.actual_start),
+		"status": plan.status
+	}
+
+
+@frappe.whitelist()
+def mark_casting_complete(plan_name, completion_time=None):
+	"""
+	Called when casting/coils are completed for a PPC plan.
+	
+	This function:
+	1. Sets actual_end from the completion time
+	2. Updates plan status to "Coils Complete"
+	3. Updates the plan's from/to times to match actuals (for calendar display)
+	4. Shifts future plans again (because actual_end may be later than planned)
+	
+	Args:
+		plan_name: Name of the PPC Casting Plan
+		completion_time: When casting completed (defaults to now)
+	
+	Returns:
+		dict with plan_name and updated timestamps
+	"""
+	from frappe.utils import now_datetime, get_datetime
+	
+	if not plan_name:
+		frappe.throw(_("Casting Plan is required."))
+	
+	plan = frappe.get_doc("PPC Casting Plan", plan_name)
+	
+	complete_dt = get_datetime(completion_time) if completion_time else now_datetime()
+	
+	# Set actual end and casting end
+	plan.actual_end = complete_dt
+	plan.casting_end = complete_dt
+	
+	# Update status
+	plan.status = "Coils Complete"
+	
+	# For the calendar, update from/to to match actuals
+	# This ensures the calendar shows the true production window
+	if plan.actual_start and plan.actual_end:
+		plan.start_datetime = plan.actual_start
+		plan.end_datetime = plan.actual_end
+	
+	plan.save(ignore_permissions=True)
+	
+	# Shift future plans again because actual_end may differ from planned
+	shift_future_plans_after(plan)
+	
+	frappe.db.commit()
+	
+	return {
+		"plan_name": plan.name,
+		"start_datetime": str(plan.start_datetime),
+		"end_datetime": str(plan.end_datetime),
+		"actual_start": str(plan.actual_start) if plan.actual_start else None,
+		"actual_end": str(plan.actual_end) if plan.actual_end else None,
+		"status": plan.status
+	}

@@ -264,15 +264,20 @@ class MeltingBatch(Document):
 		Behaviour:
 		- Only runs once per batch.
 		- If linked ppc_casting_plan exists and its melting hasn't started yet,
-		  we update casting_plan.melting_start & actual_start.
-		- We then move the PPC plan to start at this actual time,
-		  preserving duration, and shift all future not-started plans
-		  on that caster by the same delta.
+		  we call the plan's shift_schedule_on_melting_start method which:
+		  1. Re-anchors the plan to actual melting start time
+		  2. Recalculates end time using planned_duration_minutes (preserving duration)
+		  3. Sets melting_start and actual_start timestamps
+		  4. Shifts all future plans for the same caster to remove overlaps
+		
+		Example:
+		  Plan A: 12:00–13:00, Plan B: 13:00–14:00 (duration 60min each)
+		  Melting for Plan B starts at 11:45.
+		  → Re-anchor Plan B to 11:45–12:45 (60min duration preserved)
+		  → Any later plans overlapping are pushed after 12:45
 		"""
 		if not self.ppc_casting_plan:
 			return
-
-		from swynix_mes.swynix_mes.utils.ppc_scheduler import shift_future_plans_for_caster
 
 		cp = frappe.get_doc("PPC Casting Plan", self.ppc_casting_plan)
 
@@ -282,38 +287,12 @@ class MeltingBatch(Document):
 
 		now_ts = now_datetime()
 
-		# Original planned times BEFORE we move anything.
-		old_planned_start = get_datetime(cp.start_datetime) if cp.start_datetime else None
-		old_planned_end = get_datetime(cp.end_datetime) if cp.end_datetime else None
-
-		# Set melting / actual start timestamps & status.
-		cp.melting_start = now_ts
-		cp.actual_start = now_ts
-		# If it's still Planned/Released, bump status to "Melting"
-		if cp.status in ("Planned", "Released"):
-			cp.status = "Melting"
-
-		delta_seconds = 0.0
-
-		if old_planned_start and old_planned_end:
-			duration = old_planned_end - old_planned_start  # timedelta
-
-			# delta between actual vs original start
-			delta_seconds = (now_ts - old_planned_start).total_seconds()
-
-			# Move this plan itself to the actual melting start
-			cp.start_datetime = now_ts
-			cp.end_datetime = now_ts + duration
-
-		cp.save(ignore_permissions=True)
-
-		# Shift future plans on this caster, starting from original start time
-		if delta_seconds and old_planned_start:
-			shift_future_plans_for_caster(
-				casting_plan_name=cp.name,
-				delta_seconds=delta_seconds,
-				from_time=old_planned_start,
-			)
+		# Use the plan's own method which handles:
+		# - Re-anchoring to actual start time
+		# - Using planned_duration_minutes for end time calculation
+		# - Setting status, melting_start, actual_start
+		# - Shifting future plans to remove overlaps
+		cp.shift_schedule_on_melting_start(now_ts)
 
 	# Legacy alias for backward compatibility
 	def mark_melting_started(self):

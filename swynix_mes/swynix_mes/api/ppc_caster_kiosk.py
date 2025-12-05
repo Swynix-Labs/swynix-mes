@@ -414,6 +414,12 @@ def get_plan_for_range(caster, start, end):
 	Used by FullCalendar to fetch events for the visible range.
 	
 	Uses overlap detection: events that start before view ends AND end after view starts.
+	
+	Returns fields including:
+	- actual_start/actual_end: Real production times (used for calendar after completion)
+	
+	Note: planned_duration_minutes is an internal field used by scheduling logic,
+	not exposed in this API as it's not needed for calendar display.
 	"""
 	if not caster:
 		return []
@@ -435,6 +441,7 @@ def get_plan_for_range(caster, start, end):
 			"furnace",
 			"start_datetime",
 			"end_datetime",
+			"duration_minutes",
 			"melting_start",
 			"melting_end",
 			"casting_start",

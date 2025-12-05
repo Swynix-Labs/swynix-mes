@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-05 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "element",
+  "element_name",
+  "rule_row",
+  "condition_type",
+  "limit_type",
+  "column_break_spec",
+  "spec_min_pct",
+  "spec_max_pct",
+  "spec_target_pct",
+  "sum_limit_pct",
+  "ratio_value",
+  "column_break_sample",
+  "sample_pct",
+  "deviation_pct",
+  "in_spec",
+  "condition_violated",
+  "note"
+ ],
+ "fields": [
+  {
+   "fieldname": "element",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Element",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "element.item_name",
+   "fieldname": "element_name",
+   "fieldtype": "Data",
+   "label": "Element Name",
+   "read_only": 1
+  },
+  {
+   "description": "Reference to the composition rule from ACCM",
+   "fieldname": "rule_row",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Composition Rule Ref"
+  },
+  {
+   "fieldname": "condition_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Condition Type",
+   "options": "\nNormal Limit\nSum Limit\nRatio\nRemainder"
+  },
+  {
+   "fieldname": "limit_type",
+   "fieldtype": "Select",
+   "label": "Limit Type",
+   "options": "\nMinimum\nMaximum\nEqual To\nRange"
+  },
+  {
+   "fieldname": "column_break_spec",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "spec_min_pct",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Spec Min %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "spec_max_pct",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Spec Max %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "spec_target_pct",
+   "fieldtype": "Float",
+   "label": "Target %",
+   "precision": "4"
+  },
+  {
+   "description": "For Sum Limit rules",
+   "fieldname": "sum_limit_pct",
+   "fieldtype": "Float",
+   "label": "Sum Limit %",
+   "precision": "4"
+  },
+  {
+   "description": "For Ratio rules",
+   "fieldname": "ratio_value",
+   "fieldtype": "Float",
+   "label": "Ratio Value",
+   "precision": "4"
+  },
+  {
+   "fieldname": "column_break_sample",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sample_pct",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Sample %",
+   "precision": "4"
+  },
+  {
+   "fieldname": "deviation_pct",
+   "fieldtype": "Float",
+   "label": "Deviation %",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "in_spec",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "In Spec?"
+  },
+  {
+   "fieldname": "condition_violated",
+   "fieldtype": "Data",
+   "label": "Violation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Melting Sample Element Result",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
+
+

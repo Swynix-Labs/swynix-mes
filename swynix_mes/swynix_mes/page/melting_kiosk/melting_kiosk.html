@@ -239,9 +239,22 @@
 	50% { opacity: 0.7; }
 }
 
+/* Spectro Table Wrapper - Responsive */
+.mk-spectro-table-wrapper {
+	width: 100%;
+	overflow-x: auto;
+	overflow-y: visible;
+	-webkit-overflow-scrolling: touch;
+}
+
+.mk-spectro-table-wrapper table {
+	min-width: 800px; /* Ensure minimum width for readability */
+}
+
 /* Spectro Table Styles */
 .mk-spectro-table {
 	font-size: 12px;
+	width: 100%;
 }
 
 .mk-spectro-table .mk-element-header {
@@ -293,12 +306,33 @@
 }
 
 .mk-spectro-table .mk-spec-summary-row td {
-	padding: 4px 10px !important;
+	padding: 8px 12px !important;
 	border-top: none !important;
 }
 
 .mk-spectro-table .mk-spec-summary-row:hover td {
 	background: #fef2f2 !important;
+}
+
+/* Deviation specs in summary row */
+.mk-spectro-table .mk-spec-summary-row .deviation-card {
+	display: inline-block;
+	background: #fff;
+	border-left: 3px solid #ef4444;
+	padding: 6px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	margin-right: 8px;
+	margin-bottom: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.mk-spectro-table .mk-spec-summary-row .deviation-card.warn {
+	border-left-color: #f59e0b;
+}
+
+.mk-spectro-table .mk-spec-summary-row .deviation-card.good {
+	border-left-color: #10b981;
 }
 
 /* Main Content Panel */
@@ -562,6 +596,65 @@
 	.mk-summary-grid {
 		grid-template-columns: repeat(3, 1fr);
 	}
+	
+	.mk-spectro-table-wrapper {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+	
+	.mk-spectro-table-wrapper table {
+		min-width: 600px;
+	}
+}
+
+/* QC Feedback Card Styles */
+.mk-qc-feedback.hide {
+  display: none;
+}
+
+.mk-qc-detail-panel.hide {
+  display: none;
+}
+
+.mk-qc-detail-panel .card {
+  border: 1px solid #d1d8dd;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mk-qc-detail-panel ul li {
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mk-qc-detail-panel ul li:last-child {
+  border-bottom: none;
+}
+
+.mk-qc-deviation-list {
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.mk-qc-deviation-list .qc-dev-card {
+	border-radius: 6px;
+	padding: 6px 10px;
+	margin-bottom: 4px;
+	font-size: 12px;
+}
+
+.mk-qc-deviation-list .qc-dev-card.bad {
+	background-color: #ffe5e5;
+	border-left: 3px solid #ef4444;
+}
+
+.mk-qc-deviation-list .qc-dev-card.warn {
+	background-color: #fff3cd;
+	border-left: 3px solid #f59e0b;
+}
+
+.mk-qc-deviation-list .qc-dev-card.good {
+	background-color: #e5ffe8;
+	border-left: 3px solid #10b981;
 }
 </style>
 
@@ -691,7 +784,76 @@
 
 					<!-- Spectro Samples Tab -->
 					<div id="mk_tab_spectro" class="mk-tab-pane">
-						<div id="mk_spectro_table"></div>
+						<div class="mk-spectro-table-wrapper">
+							<div id="mk_spectro_table"></div>
+						</div>
+						
+						<!-- QC Detail Panel for Selected Sample -->
+						<div class="mk-qc-detail-panel hide" id="mk-qc-detail-panel" style="margin-top: 20px;">
+							<div class="card">
+								<div class="card-body">
+									<div class="d-flex justify-content-between align-items-center mb-3">
+										<h5 class="mb-0">
+											QC Summary for <span id="mk-qc-detail-sample-id"></span>
+										</h5>
+										<button type="button" class="btn btn-xs btn-default" id="mk-qc-detail-close">
+											<i class="fa fa-times"></i> Close
+										</button>
+									</div>
+									
+									<div id="mk-qc-detail-deviations" class="mb-3">
+										<!-- Deviations will be populated here -->
+									</div>
+									
+									<div class="mb-2">
+										<label class="text-muted small">QC Comment / Instructions</label>
+										<div id="mk-qc-detail-comment" class="border rounded p-2 bg-light" style="min-height: 60px;"></div>
+									</div>
+									
+									<div class="text-muted small">
+										Last updated by <span id="mk-qc-detail-updated-by"></span> on <span id="mk-qc-detail-updated-on"></span>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- QC Feedback Card (for detailed view) -->
+						<div class="mk-qc-feedback hide" id="mk-qc-feedback" style="margin-top: 20px;">
+							<div class="card">
+								<div class="card-body">
+									<div class="d-flex justify-content-between align-items-center mb-2">
+										<div>
+											<h5 class="mb-0">
+												QC Feedback – <span id="mk-qc-sample-label"></span>
+											</h5>
+											<small class="text-muted">
+												Batch: <span id="mk-qc-batch"></span> |
+												Alloy: <span id="mk-qc-alloy"></span> |
+												Product: <span id="mk-qc-product"></span> |
+												Furnace: <span id="mk-qc-furnace"></span>
+											</small>
+										</div>
+										<span id="mk-qc-status-badge" class="badge badge-secondary"></span>
+									</div>
+
+									<div class="row">
+										<!-- Left: QC comment -->
+										<div class="col-md-5 mb-3">
+											<label class="text-muted small">QC Comment / Instructions to Melting</label>
+											<div id="mk-qc-comment" class="border rounded p-2 bg-light" style="min-height: 72px; white-space: pre-wrap;"></div>
+										</div>
+
+										<!-- Right: deviation list -->
+										<div class="col-md-7 mb-3">
+											<label class="text-muted small">Specification Deviations</label>
+											<div id="mk-qc-deviation-list" class="mk-qc-deviation-list">
+												<!-- filled dynamically -->
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
 
 					<!-- Transfer Tab -->

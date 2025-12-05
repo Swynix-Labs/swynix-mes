@@ -8,7 +8,12 @@
  "field_order": [
   "sample_id",
   "sample_time",
-  "column_break_elements1",
+  "status",
+  "overall_result",
+  "column_break_header",
+  "spec_master",
+  "lab_technician",
+  "section_legacy_elements",
   "si_percent",
   "fe_percent",
   "cu_percent",
@@ -18,10 +23,21 @@
   "zn_percent",
   "ti_percent",
   "al_percent",
-  "column_break_status",
+  "section_element_results",
+  "elements",
+  "section_notes",
   "result_status",
   "correction_required",
-  "remarks"
+  "correction_note",
+  "remarks",
+  "section_qc_feedback",
+  "qc_status",
+  "qc_comment",
+  "qc_deviation_summary",
+  "qc_deviation_count",
+  "qc_deviation_detail",
+  "qc_last_updated_by",
+  "qc_last_updated_on"
  ],
  "fields": [
   {
@@ -38,20 +54,55 @@
    "label": "Sample Time"
   },
   {
-   "fieldname": "column_break_elements1",
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nIn Lab\nAccepted\nRejected\nCorrection Required"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "overall_result",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Overall Result",
+   "options": "Pending\nIn Spec\nOut of Spec"
+  },
+  {
+   "fieldname": "column_break_header",
    "fieldtype": "Column Break"
+  },
+  {
+   "description": "Active Alloy Chemical Composition Master used for this sample",
+   "fieldname": "spec_master",
+   "fieldtype": "Link",
+   "label": "Composition Master",
+   "options": "Alloy Chemical Composition Master"
+  },
+  {
+   "fieldname": "lab_technician",
+   "fieldtype": "Link",
+   "label": "Lab Technician",
+   "options": "User"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.elements && doc.elements.length > 0",
+   "description": "Legacy element fields for backward compatibility",
+   "fieldname": "section_legacy_elements",
+   "fieldtype": "Section Break",
+   "label": "Quick Entry (Legacy)"
   },
   {
    "fieldname": "si_percent",
    "fieldtype": "Float",
-   "in_list_view": 1,
    "label": "Si %",
    "precision": "4"
   },
   {
    "fieldname": "fe_percent",
    "fieldtype": "Float",
-   "in_list_view": 1,
    "label": "Fe %",
    "precision": "4"
   },
@@ -74,7 +125,6 @@
   {
    "fieldname": "mg_percent",
    "fieldtype": "Float",
-   "in_list_view": 1,
    "label": "Mg %",
    "precision": "4"
   },
@@ -97,34 +147,97 @@
    "precision": "4"
   },
   {
-   "fieldname": "column_break_status",
-   "fieldtype": "Column Break"
+   "description": "Detailed element results from QC evaluation",
+   "fieldname": "section_element_results",
+   "fieldtype": "Section Break",
+   "label": "Element Results"
+  },
+  {
+   "fieldname": "elements",
+   "fieldtype": "Table",
+   "label": "Element Results",
+   "options": "Melting Sample Element Result"
+  },
+  {
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes & Status"
   },
   {
    "default": "Pending",
+   "description": "Legacy status field",
    "fieldname": "result_status",
    "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Result Status",
+   "hidden": 1,
+   "label": "Result Status (Legacy)",
    "options": "Pending\nWithin Limit\nOut of Limit"
   },
   {
    "default": "0",
    "fieldname": "correction_required",
    "fieldtype": "Check",
-   "in_list_view": 1,
    "label": "Correction Required"
+  },
+  {
+   "depends_on": "eval:doc.correction_required || doc.status == 'Correction Required'",
+   "fieldname": "correction_note",
+   "fieldtype": "Small Text",
+   "label": "Correction Note"
   },
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_qc_feedback",
+   "fieldtype": "Section Break",
+   "label": "QC Feedback"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "qc_status",
+   "fieldtype": "Select",
+   "label": "QC Status",
+   "options": "Pending\nWithin Spec\nOut of Spec\nCorrection Required\nRejected"
+  },
+  {
+   "fieldname": "qc_comment",
+   "fieldtype": "Small Text",
+   "label": "QC Comment"
+  },
+  {
+   "fieldname": "qc_deviation_summary",
+   "fieldtype": "Long Text",
+   "label": "QC Deviation Summary"
+  },
+  {
+   "default": "0",
+   "fieldname": "qc_deviation_count",
+   "fieldtype": "Int",
+   "label": "QC Deviation Count"
+  },
+  {
+   "fieldname": "qc_deviation_detail",
+   "fieldtype": "Long Text",
+   "label": "QC Deviation Detail (JSON)"
+  },
+  {
+   "fieldname": "qc_last_updated_by",
+   "fieldtype": "Data",
+   "label": "QC Last Updated By"
+  },
+  {
+   "fieldname": "qc_last_updated_on",
+   "fieldtype": "Datetime",
+   "label": "QC Last Updated On"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-04 12:00:00.000000",
+ "modified": "2025-12-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Melting Batch Spectro Sample",
@@ -134,5 +247,3 @@
  "sort_order": "DESC",
  "states": []
 }
-
-

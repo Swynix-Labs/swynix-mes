@@ -74,3 +74,7 @@ class TestCoil(FrappeTestCase):
 		self.assertRaises(frappe.ValidationError, coil.insert)
 
 
+
+
+
+

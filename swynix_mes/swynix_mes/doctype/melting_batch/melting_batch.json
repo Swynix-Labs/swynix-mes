@@ -19,6 +19,7 @@
   "charge_mix_recipe",
   "plan_date",
   "status",
+  "qc_status",
   "casting_parameters_section",
   "planned_width_mm",
   "planned_gauge_mm",
@@ -150,6 +151,16 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Draft\nCharging\nMelting\nReady for Transfer\nTransferred\nScrapped"
+  },
+  {
+   "default": "Pending",
+   "description": "QC status based on spectro sample results",
+   "fieldname": "qc_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "QC Status",
+   "options": "Pending\nOK\nCorrection Required\nRejected"
   },
   {
    "fieldname": "casting_parameters_section",
@@ -439,6 +450,16 @@
    "role": "MES Manager",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
    "write": 1
   }
  ],

@@ -112,6 +112,11 @@ function init_mk_events() {
 		mark_ready_for_transfer();
 	});
 
+	// QC Detail Panel - Close button
+	$(document).on("click", "#mk-qc-detail-close", function() {
+		$("#mk-qc-detail-panel").addClass("hide");
+	});
+
 	// Tab switching (Raw / Process / Spectro / Transfer) - custom JS, no route change
 	$(document).on("click", "#mk_batch_tabs .mk-tab", function(e) {
 		e.preventDefault();
@@ -900,6 +905,8 @@ function render_spectro_table_from_context(ctx) {
 	});
 	
 	html += '<th style="min-width: 80px;">Status</th>';
+	html += '<th style="min-width: 100px;">QC Status</th>';
+	html += '<th style="min-width: 120px;">QC Summary</th>';
 	html += '<th style="min-width: 60px;">Corr?</th>';
 	html += '</tr></thead>';
 	
@@ -923,8 +930,16 @@ function render_spectro_table_from_context(ctx) {
 			row_class = 'mk-row-has-issues';
 		}
 		
-		html += '<tr class="' + row_class + '">';
-		html += '<td class="text-bold">' + frappe.utils.escape_html(s.sample_id || "-") + '</td>';
+		html += '<tr class="' + row_class + '" data-sample-name="' + frappe.utils.escape_html(s.name || '') + '" style="cursor: pointer;">';
+		
+		// Sample ID with link to QC Kiosk (includes batch and sample params)
+		var qc_kiosk_url = '/app/qc-kiosk?batch=' + encodeURIComponent(mk_current_batch || '') + 
+			'&sample=' + encodeURIComponent(s.sample_id || '');
+		html += '<td class="text-bold">';
+		html += '<a href="' + qc_kiosk_url + '" target="_blank" style="color: #0ea5e9;" title="Open in QC Kiosk" onclick="event.stopPropagation();">';
+		html += frappe.utils.escape_html(s.sample_id || "-");
+		html += '</a></td>';
+		
 		html += '<td style="font-size: 11px;">' + (s.sample_time ? frappe.datetime.str_to_user(s.sample_time) : "-") + '</td>';
 		
 		// Element values with pass/fail coloring
@@ -943,38 +958,310 @@ function render_spectro_table_from_context(ctx) {
 			html += '<td class="' + cell_class + '" data-element="' + el.code + '">' + display_val + '</td>';
 		});
 		
-		// Status
+		// Status - use QC status if available, otherwise use overall_result
+		var qc_status = s.qc_status || s.overall_result || s.result_status || "Pending";
 		var status_style = "background: #f3f4f6; color: #4b5563;";
-		if (s.result_status === "Within Limit") {
+		var status_display = "Pending";
+		
+		if (qc_status === "Within Spec" || qc_status === "In Spec" || qc_status === "Within Limit") {
 			status_style = "background: #d1fae5; color: #047857;";
-		} else if (s.result_status === "Out of Limit") {
+			status_display = "OK";
+		} else if (qc_status === "Out of Spec" || qc_status === "Out of Limit") {
 			status_style = "background: #fee2e2; color: #b91c1c;";
+			status_display = "Out of Spec";
+		} else if (qc_status === "Correction Required") {
+			status_style = "background: #fef3c7; color: #b45309;";
+			status_display = "Correction";
 		}
+		
+		// Also show sample status (Accepted, In Lab, etc.)
+		var sample_status = s.status || "Pending";
+		var sample_badge = "";
+		if (sample_status === "Accepted") {
+			sample_badge = '<span style="background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px;">✓</span>';
+		} else if (sample_status === "In Lab") {
+			sample_badge = '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px;">Lab</span>';
+		}
+		
+		// Show deviation summary as tooltip/chip if available
+		var deviation_chip = "";
+		if (s.qc_deviation_summary && s.qc_deviation_summary !== "No deviations") {
+			var deviation_count = (s.qc_deviation_summary.match(/,/g) || []).length + 1;
+			deviation_chip = '<span style="background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px;" title="' + 
+				frappe.utils.escape_html(s.qc_deviation_summary) + '">' + deviation_count + ' dev</span>';
+		}
+		
 		html += '<td><span style="' + status_style + ' padding: 2px 8px; border-radius: 4px; font-size: 10px; white-space: nowrap;">' + 
-			frappe.utils.escape_html(s.result_status || "Pending") + '</span></td>';
+			frappe.utils.escape_html(status_display) + '</span>' + sample_badge + deviation_chip + '</td>';
+		
+		// QC Status column
+		var qc_status = s.qc_status || "Pending";
+		var qc_status_class = "badge-secondary";
+		var qc_status_text = qc_status;
+		if (qc_status === "Within Spec") {
+			qc_status_class = "badge-success";
+			qc_status_text = "Within Spec";
+		} else if (qc_status === "Out of Spec") {
+			qc_status_class = "badge-danger";
+			qc_status_text = "Out of Spec";
+		} else if (qc_status === "Correction Required") {
+			qc_status_class = "badge-warning";
+			qc_status_text = "Correction";
+		} else if (qc_status === "Rejected") {
+			qc_status_class = "badge-danger";
+			qc_status_text = "Rejected";
+		}
+		html += '<td><span class="badge ' + qc_status_class + '" style="font-size: 10px;">' + 
+			frappe.utils.escape_html(qc_status_text) + '</span></td>';
+		
+		// QC Summary column
+		var qc_deviation_count = s.qc_deviation_count || 0;
+		var qc_summary_html = '';
+		if (qc_deviation_count > 0) {
+			qc_summary_html = '<span class="text-danger mk-qc-summary-link" style="cursor: pointer; font-size: 11px;" ' +
+				'data-sample-name="' + frappe.utils.escape_html(s.name) + '">' +
+				'<i class="fa fa-exclamation-triangle"></i> ' + qc_deviation_count + ' deviation' + 
+				(qc_deviation_count > 1 ? 's' : '') + ' – view</span>';
+		} else if (qc_status === "Within Spec") {
+			qc_summary_html = '<span class="text-success" style="font-size: 11px;">' +
+				'<i class="fa fa-check-circle"></i> Within Spec</span>';
+		} else {
+			qc_summary_html = '<span class="text-muted" style="font-size: 11px;">Pending</span>';
+		}
+		html += '<td>' + qc_summary_html + '</td>';
 		
 		// Correction required
 		html += '<td>';
-		if (s.correction_required) {
+		if (s.correction_required || s.status === "Correction Required" || qc_status === "Correction Required") {
 			html += '<span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Yes</span>';
 		}
 		html += '</td>';
 		
 		html += '</tr>';
 		
-		// If out of spec, show summary row
-		if (out_of_spec_count > 0) {
+		// Show deviation details row if QC has processed this sample
+		var has_qc_deviations = false;
+		var deviation_details = [];
+		
+		if (s.qc_deviation_detail) {
+			try {
+				var deviations = JSON.parse(s.qc_deviation_detail);
+				if (deviations && deviations.length > 0) {
+					has_qc_deviations = true;
+					deviation_details = deviations;
+				}
+			} catch(e) {
+				// Invalid JSON, ignore
+			}
+		}
+		
+		// Show summary row with deviation specs
+		if (has_qc_deviations || out_of_spec_count > 0) {
 			html += '<tr class="mk-spec-summary-row">';
-			html += '<td colspan="' + (elements.length + 4) + '">';
-			html += '<span style="color: #dc2626; font-size: 11px;"><i class="fa fa-exclamation-triangle"></i> ';
-			html += out_of_spec_count + ' element(s) out of spec</span>';
+			html += '<td colspan="' + (elements.length + 6) + '">';  // Updated colspan for new columns
+			
+			if (has_qc_deviations) {
+				// Show exact QC deviation specs
+				html += '<div style="padding: 10px 12px; background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 4px;">';
+				html += '<div style="color: #dc2626; font-size: 12px; font-weight: 600; margin-bottom: 8px;">';
+				html += '<i class="fa fa-exclamation-triangle"></i> QC Deviation Specs:';
+				html += '</div>';
+				html += '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+				
+				deviation_details.forEach(function(dev) {
+					var severity_class = dev.severity === "high" ? "bad" : (dev.severity === "medium" ? "warn" : "good");
+					var border_color = severity_class === "bad" ? "#ef4444" : (severity_class === "warn" ? "#f59e0b" : "#10b981");
+					var text_color = severity_class === "bad" ? "#b91c1c" : (severity_class === "warn" ? "#b45309" : "#047857");
+					
+					html += '<div class="deviation-card ' + severity_class + '" style="border-left-color: ' + border_color + ';">';
+					html += '<strong style="color: ' + text_color + '; display: block; margin-bottom: 2px;">' + 
+						frappe.utils.escape_html(dev.label || dev.code || "") + '</strong>';
+					html += '<small style="color: #64748b; display: block;">Expected: <strong>' + frappe.utils.escape_html(dev.expected || "") + 
+						'</strong>, Actual: <strong style="color: ' + text_color + ';">' + frappe.utils.escape_html(dev.actual || "") + '</strong></small>';
+					html += '</div>';
+				});
+				
+				html += '</div>';
+				html += '</div>';
+			} else if (out_of_spec_count > 0) {
+				// Fallback: show element count if no QC deviations available
+				html += '<span style="color: #dc2626; font-size: 11px;"><i class="fa fa-exclamation-triangle"></i> ';
+				html += out_of_spec_count + ' element(s) out of spec</span>';
+			}
+			
 			html += '</td></tr>';
 		}
 	});
 	
 	html += '</tbody></table>';
 	
+	// Add QC Kiosk link with batch parameter
+	var batch_for_qc = mk_current_batch || '';
+	html += '<div style="margin-top: 12px; text-align: right;">';
+	html += '<a href="/app/qc-kiosk?batch=' + encodeURIComponent(batch_for_qc) + '" target="_blank" class="btn btn-xs btn-default">';
+	html += '<i class="fa fa-external-link"></i> Open QC Kiosk';
+	html += '</a></div>';
+	
 	$container.html(html);
+	
+	// Bind row click handlers for QC feedback
+	bind_spectro_row_clicks();
+	bind_qc_summary_links();
+}
+
+function bind_qc_summary_links() {
+	$(".mk-qc-summary-link").off("click").on("click", function(e) {
+		e.stopPropagation();
+		var sample_name = $(this).data("sample-name");
+		if (sample_name) {
+			load_qc_feedback(sample_name);
+			// Highlight the row
+			$("#mk_spectro_table tbody tr").removeClass("table-active");
+			$(this).closest("tr").addClass("table-active");
+		}
+	});
+}
+
+function bind_spectro_row_clicks() {
+	$("#mk_spectro_table tbody tr").off("click").on("click", function() {
+		var sample_name = $(this).data("sample-name");
+		if (sample_name) {
+			// Load from context data for quick display
+			if (mk_spectro_context && mk_spectro_context.samples) {
+				var sample_data = mk_spectro_context.samples.find(function(s) {
+					return s.name === sample_name;
+				});
+				if (sample_data) {
+					render_qc_detail_panel(sample_data);
+				}
+			}
+			// Also load detailed feedback via API
+			load_qc_feedback(sample_name);
+			$(this).addClass("table-active").siblings().removeClass("table-active");
+		}
+	});
+}
+
+function load_qc_feedback(sample_name) {
+	if (!sample_name) {
+		$("#mk-qc-feedback").addClass("hide");
+		$("#mk-qc-detail-panel").addClass("hide");
+		return;
+	}
+	
+	// Load from context data if available, otherwise call API
+	var sample_data = null;
+	if (mk_spectro_context && mk_spectro_context.samples) {
+		sample_data = mk_spectro_context.samples.find(function(s) {
+			return s.name === sample_name;
+		});
+	}
+	
+	if (sample_data) {
+		// Use context data for quick display
+		render_qc_detail_panel(sample_data);
+	}
+	
+	// Also load detailed feedback via API
+	frappe.call({
+		method: "swynix_mes.swynix_mes.api.melting_kiosk.get_sample_qc_feedback",
+		args: { sample_name: sample_name },
+		freeze: false,
+		callback: function(r) {
+			if (!r.message) {
+				$("#mk-qc-feedback").addClass("hide");
+				return;
+			}
+			
+			var data = r.message;
+			
+			// Show header
+			$("#mk-qc-feedback").removeClass("hide");
+			$("#mk-qc-sample-label").text(data.sample_id || data.sample_name || "");
+			$("#mk-qc-batch").text(data.batch || "");
+			$("#mk-qc-alloy").text(data.alloy || "");
+			$("#mk-qc-product").text(data.product || "");
+			$("#mk-qc-furnace").text(data.furnace || "");
+			
+			// Status badge
+			var $badge = $("#mk-qc-status-badge");
+			$badge.removeClass().addClass("badge");
+			var label = data.qc_status || "Pending";
+			var cls = "badge-secondary";
+			if (label === "Within Spec") {
+				cls = "badge-success";
+			} else if (label === "Out of Spec") {
+				cls = "badge-danger";
+			} else if (label === "Correction Required") {
+				cls = "badge-warning";
+			}
+			$badge.addClass(cls).text(label);
+			
+			// Comment
+			$("#mk-qc-comment").text(data.qc_comment || "No specific instructions from QC.");
+			
+			// Deviations
+			var $list = $("#mk-qc-deviation-list").empty();
+			if (!data.deviations || !data.deviations.length) {
+				$("<div class='qc-dev-card good'>No deviations. Sample within spec.</div>").appendTo($list);
+			} else {
+				data.deviations.forEach(function(dev) {
+					var cls = dev.severity === "high" ? "bad" : (dev.severity === "medium" ? "warn" : "good");
+					var $card = $("<div class='qc-dev-card " + cls + "'>");
+					$card.append($("<strong>").text(dev.label || dev.code || ""));
+					$card.append($("<br/>"));
+					$card.append($("<small>").text("Expected: " + (dev.expected || "") + ", actual: " + (dev.actual || "")));
+					$list.append($card);
+				});
+			}
+		}
+	});
+}
+
+function render_qc_detail_panel(sample_data) {
+	if (!sample_data) {
+		$("#mk-qc-detail-panel").addClass("hide");
+		return;
+	}
+	
+	$("#mk-qc-detail-panel").removeClass("hide");
+	$("#mk-qc-detail-sample-id").text(sample_data.sample_id || "");
+	
+	// Render deviations
+	var $deviations = $("#mk-qc-detail-deviations");
+	$deviations.empty();
+	
+	if (sample_data.qc_deviation_summary && sample_data.qc_deviation_summary.trim()) {
+		var deviation_lines = sample_data.qc_deviation_summary.split("\n").filter(function(line) {
+			return line.trim().length > 0;
+		});
+		
+		if (deviation_lines.length > 0) {
+			$deviations.html('<label class="text-muted small mb-2">Specification Deviations</label>');
+			var $list = $('<ul class="list-unstyled" style="margin-bottom: 0;"></ul>');
+			
+			deviation_lines.forEach(function(line) {
+				$list.append('<li class="mb-1"><i class="fa fa-exclamation-circle text-danger"></i> ' + 
+					frappe.utils.escape_html(line) + '</li>');
+			});
+			
+			$deviations.append($list);
+		} else {
+			$deviations.html('<div class="text-success"><i class="fa fa-check-circle"></i> No deviations. Sample within spec.</div>');
+		}
+	} else {
+		$deviations.html('<div class="text-muted"><i class="fa fa-info-circle"></i> No QC evaluation available yet.</div>');
+	}
+	
+	// Render comment
+	$("#mk-qc-detail-comment").text(sample_data.qc_comment || "No specific instructions from QC.");
+	
+	// Render last updated info
+	var updated_by = sample_data.qc_last_updated_by || "N/A";
+	var updated_on = sample_data.qc_last_updated_on ? 
+		frappe.datetime.str_to_user(sample_data.qc_last_updated_on) : "N/A";
+	$("#mk-qc-detail-updated-by").text(updated_by);
+	$("#mk-qc-detail-updated-on").text(updated_on);
 }
 
 function render_transfer_form(doc) {

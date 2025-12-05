@@ -330,7 +330,10 @@ function fetch_events(start, end) {
 					furnace: p.furnace,
 					tooltip: buildTooltip(p),
 					overlap_flag: p.overlap_flag,
-					overlap_note: p.overlap_note
+					overlap_note: p.overlap_note,
+					// Actual timing info (from production)
+					actual_start: p.actual_start,
+					actual_end: p.actual_end
 				}
 			};
 		});

@@ -315,6 +315,7 @@ def add_raw_material_row(batch_name, item_code, qty_kg, ingredient_type=None,
 
     row = doc.append("raw_materials", {})
     row.row_index = row_index
+    row.posting_datetime = now_datetime()  # Set timestamp for charge history tracking
     row.item_code = item_code
     row.qty_kg = flt(qty_kg or 0, 3)
     row.ingredient_type = ingredient_type
@@ -442,40 +443,48 @@ def log_process_event(batch_name, event_type, temp_c=None, pressure_bar=None,
 @frappe.whitelist()
 def create_sample(batch_name):
     """
-    Create next spectro sample (S1, S2,...) and log Sample Taken event.
+    Create next spectro sample (S1, S2,...) with pre-populated elements from ACCM.
+    
+    This uses the QC API's create_spectro_sample function which:
+    - Gets the active Alloy Chemical Composition Master for the batch's alloy
+    - Creates element result rows pre-populated with spec limits
+    - Logs a Sample Taken process event
+    
+    Returns:
+        dict with sample_id and sample info
     """
     if not batch_name:
         frappe.throw(_("Melting Batch is required."))
-
-    doc = frappe.get_doc("Melting Batch", batch_name)
-
-    # Determine next sample ID
-    existing_ids = [s.sample_id for s in doc.spectro_samples if s.sample_id]
-    idx = len(existing_ids) + 1
-    sample_id = f"S{idx}"
-
-    # Add spectro sample row
-    srow = doc.append("spectro_samples", {})
-    srow.sample_id = sample_id
-    srow.sample_time = now_datetime()
-    srow.result_status = "Pending"
-
-    # Log process event
-    prow = doc.append("process_logs", {})
-    prow.log_time = srow.sample_time
-    prow.event_type = "Sample Taken"
-    prow.sample_id = sample_id
-
-    doc.save()
-    frappe.db.commit()
-
-    return {"sample_id": sample_id}
+    
+    # Use the QC API's sample creation function for full ACCM integration
+    from swynix_mes.swynix_mes.api.qc_kiosk import create_spectro_sample
+    
+    result = create_spectro_sample(batch_name)
+    
+    return {
+        "sample_id": result.get("sample_id"),
+        "sample_row_name": result.get("sample_row_name"),
+        "spec_master": result.get("spec_master"),
+        "elements_count": result.get("elements_count", 0)
+    }
 
 
 @frappe.whitelist()
-def mark_ready_for_transfer(batch_name):
+def mark_ready_for_transfer(batch_name, skip_qc_check=False):
     """
     Lab / Supervisor marks batch Ready for Transfer after chemistry OK.
+    
+    QC Check:
+    - If skip_qc_check is False (default), requires at least one accepted sample
+    - If no accepted sample exists, returns warning but doesn't block
+    - Sets batch.qc_status based on sample results
+    
+    Args:
+        batch_name: Name of the Melting Batch
+        skip_qc_check: If True, skip the QC status check (use with caution)
+        
+    Returns:
+        dict with status and QC info
     """
     if not batch_name:
         frappe.throw(_("Melting Batch is required."))
@@ -485,11 +494,46 @@ def mark_ready_for_transfer(batch_name):
     if doc.status not in ["Melting", "Charging"]:
         frappe.throw(_("Batch must be in Melting or Charging status to mark ready for transfer. Current: {0}").format(doc.status))
 
+    # Check QC status
+    from swynix_mes.swynix_mes.api.qc_kiosk import check_qc_for_transfer
+    
+    qc_result = check_qc_for_transfer(batch_name)
+    qc_warning = None
+    
+    if not skip_qc_check:
+        if qc_result.get("qc_status") == "Correction Required":
+            # Block transfer if correction is required
+            frappe.throw(
+                _("Cannot mark Ready for Transfer: QC shows Correction Required.<br><br>"
+                  "{0}<br><br>"
+                  "Please complete corrections and get QC acceptance before transfer.").format(
+                    qc_result.get("message", "")
+                ),
+                title=_("QC Check Failed")
+            )
+        elif qc_result.get("qc_status") == "Pending":
+            # Allow but warn
+            qc_warning = qc_result.get("message", "QC status is pending")
+    
+    # Update status
     doc.status = "Ready for Transfer"
+    
+    # Update QC status based on samples
+    if qc_result.get("qc_status") == "OK":
+        doc.qc_status = "OK"
+    elif qc_result.get("qc_status") == "Correction Required":
+        doc.qc_status = "Correction Required"
+    # Keep existing qc_status if pending (might already be set)
+    
     doc.save()
     frappe.db.commit()
 
-    return doc.status
+    return {
+        "status": doc.status,
+        "qc_status": doc.qc_status,
+        "qc_warning": qc_warning,
+        "accepted_samples": qc_result.get("accepted_samples", [])
+    }
 
 
 @frappe.whitelist()
@@ -1101,9 +1145,19 @@ def get_spectro_context(melting_batch):
             "name": s.name,
             "sample_id": s.sample_id,
             "sample_time": str(s.sample_time) if s.sample_time else None,
-            "result_status": s.result_status,
+            "status": getattr(s, "status", None) or "Pending",  # New field
+            "overall_result": getattr(s, "overall_result", None) or "Pending",  # New field
+            "result_status": s.result_status,  # Legacy field
             "correction_required": s.correction_required,
+            "spec_master": getattr(s, "spec_master", None),  # New field
             "remarks": s.remarks,
+            "qc_status": getattr(s, "qc_status", None) or "Pending",  # QC feedback fields
+            "qc_comment": getattr(s, "qc_comment", None) or "",
+            "qc_deviation_summary": getattr(s, "qc_deviation_summary", None) or "",
+            "qc_deviation_count": getattr(s, "qc_deviation_count", None) or 0,
+            "qc_deviation_detail": getattr(s, "qc_deviation_detail", None),  # Full deviation details (JSON)
+            "qc_last_updated_by": getattr(s, "qc_last_updated_by", None),
+            "qc_last_updated_on": str(getattr(s, "qc_last_updated_on", "")) if getattr(s, "qc_last_updated_on", None) else None,
             "values": values
         })
     
@@ -1112,6 +1166,152 @@ def get_spectro_context(melting_batch):
         "samples": samples,
         "sum_rules": sum_rules,
         "alloy": alloy,
-        "composition_master": composition_master if alloy else None
+        "composition_master": composition_master if alloy else None,
+        "qc_status": getattr(doc, "qc_status", None) or "Pending"  # Batch QC status
+    }
+
+
+@frappe.whitelist()
+def get_sample_qc_feedback(sample_name):
+    """
+    Get detailed QC analysis and stored QC feedback for a spectro sample.
+    
+    Args:
+        sample_name: Name of the Melting Batch Spectro Sample child row
+        
+    Returns:
+        dict with:
+        - sample_name, batch, alloy, product, furnace, sample_id, sample_time
+        - qc_status, qc_comment
+        - elements: List of element evaluation results
+        - deviations: List of deviation objects (from stored JSON or fresh evaluation)
+    """
+    import json
+    
+    if not sample_name:
+        frappe.throw(_("Sample name is required."))
+    
+    # Load sample row
+    sample = frappe.get_doc("Melting Batch Spectro Sample", sample_name)
+    
+    if not sample:
+        frappe.throw(_("Sample not found: {0}").format(sample_name))
+    
+    # Get parent batch
+    batch = frappe.get_doc("Melting Batch", sample.parent)
+    
+    # Build sample_data dict with all actual element percentages
+    sample_data = {}
+    ELEMENT_FIELDS = {
+        "Si": "si_percent",
+        "Fe": "fe_percent",
+        "Cu": "cu_percent",
+        "Mn": "mn_percent",
+        "Mg": "mg_percent",
+        "Zn": "zn_percent",
+        "Ti": "ti_percent",
+        "Al": "al_percent",
+    }
+    
+    for elem, field in ELEMENT_FIELDS.items():
+        value = getattr(sample, field, None)
+        if value is not None:
+            sample_data[elem] = flt(value, 4)
+    
+    # Also check for S (sulfur) if present
+    if hasattr(sample, "s_pct") and sample.s_pct is not None:
+        sample_data["S"] = flt(sample.s_pct, 4)
+    
+    # Evaluate sample against spec
+    from swynix_mes.swynix_mes.utils.composition_check import (
+        evaluate_sample_against_alloy,
+        get_element_code
+    )
+    
+    eval_result = evaluate_sample_against_alloy(batch.alloy, sample_data)
+    
+    # Build element results
+    elements = []
+    for el_result in eval_result.get("per_element_results", []):
+        elements.append({
+            "element": el_result.get("element"),
+            "spec_min": el_result.get("spec_min"),
+            "spec_max": el_result.get("spec_max"),
+            "actual": el_result.get("actual"),
+            "ok": el_result.get("pass_fail", False)
+        })
+    
+    # Get deviations - prefer stored, otherwise use fresh evaluation
+    deviations = []
+    if hasattr(sample, "qc_deviation_detail") and sample.qc_deviation_detail:
+        try:
+            deviations = json.loads(sample.qc_deviation_detail)
+        except Exception:
+            # If stored JSON is invalid, use fresh evaluation
+            deviations = []
+    
+    # If no stored deviations, format from fresh evaluation
+    if not deviations:
+        for rule in eval_result.get("rule_results", []):
+            if not rule.get("pass_fail", True):
+                ctype = rule.get("condition_type", "")
+                desc = rule.get("description", "")
+                expected = rule.get("expected_text", "")
+                actual = rule.get("value")
+                
+                # Determine code
+                if ctype == "Sum Limit":
+                    code = desc.replace(" + ", "_").replace(" ", "_").upper()
+                elif ctype == "Ratio":
+                    code = desc.replace("/", "_").replace(" ", "_").upper()
+                elif ctype == "Remainder":
+                    code = "AL_REMAINDER"
+                else:
+                    code = desc.replace(" ", "_").upper()
+                
+                # Extract expected text
+                expected_clean = ""
+                if "should be" in expected:
+                    expected_clean = expected.split("should be")[-1].strip()
+                else:
+                    expected_clean = expected
+                
+                deviation = {
+                    "code": code,
+                    "label": desc,
+                    "expected": expected_clean,
+                    "actual": str(round(actual, 4)) if actual is not None else "N/A",
+                    "severity": "high",
+                    "type": ctype.lower().replace(" ", "_")
+                }
+                deviations.append(deviation)
+    
+    # Get QC status and comment - prefer stored, otherwise use evaluation
+    qc_status = "Pending"
+    if hasattr(sample, "qc_status") and sample.qc_status:
+        qc_status = sample.qc_status
+    elif eval_result.get("overall_pass", False):
+        qc_status = "Within Spec"
+    else:
+        qc_status = "Out of Spec"
+    
+    qc_comment = ""
+    if hasattr(sample, "qc_comment") and sample.qc_comment:
+        qc_comment = sample.qc_comment
+    elif hasattr(sample, "remarks") and sample.remarks:
+        qc_comment = sample.remarks
+    
+    return {
+        "sample_name": sample.name,
+        "batch": batch.name,
+        "alloy": batch.alloy,
+        "product": batch.product_item,
+        "furnace": batch.furnace,
+        "sample_id": sample.sample_id,
+        "sample_time": str(sample.sample_time) if sample.sample_time else None,
+        "qc_status": qc_status,
+        "qc_comment": qc_comment,
+        "elements": elements,
+        "deviations": deviations
     }
 

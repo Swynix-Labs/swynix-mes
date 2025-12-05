@@ -9,11 +9,27 @@ when actual timings deviate from planned timings.
 
 When melting starts earlier or later than planned, the affected plan
 and all subsequent not-yet-started plans on the same caster are shifted
-by the same delta, preserving their original durations.
+to prevent overlaps, preserving their original planned durations.
+
+Key Behavior:
+- Each PPC Casting Plan stores its original planned_duration_minutes
+- When melting starts (early or late), the plan is "re-anchored" to the actual start time
+- The end time is recalculated as: start + planned_duration_minutes
+- All future plans for the same caster are then shifted forward to remove any overlaps
+- When casting completes, actual times are used and future plans are shifted again
+
+Example:
+  Plan A: 12:00–13:00, Plan B: 13:00–14:00 (duration 60min each)
+  Melting for Plan B starts at 11:45.
+  → Re-anchor Plan B to 11:45–12:45 (60min duration preserved)
+  → Plan A at 12:00–13:00 now overlaps with Plan B
+  → But Plan A started earlier, so we only shift plans AFTER Plan B's new end (12:45)
+  → If Plan C is at 12:30–13:30, it gets pushed to 12:45–13:45
 """
 
 import frappe
 from frappe.utils import get_datetime
+from datetime import timedelta
 
 # Plans in these statuses are "locked" in time – we must never move them.
 LOCKED_STATUSES = [
@@ -123,22 +139,25 @@ def adjust_future_plans_for_caster(plan):
 	Legacy wrapper - called when actual_end deviates from planned_end.
 	This is called after coils are complete.
 	
+	Now delegates to the new shift_future_plans_after function in ppc_casting_plan.py
+	which properly handles durations and prevents overlaps.
+	
 	Args:
 		plan: PPC Casting Plan document (must have actual_end and end_datetime)
 	"""
-	if not plan.actual_end or not plan.end_datetime:
-		return
+	from swynix_mes.swynix_mes.doctype.ppc_casting_plan.ppc_casting_plan import shift_future_plans_after
+	shift_future_plans_after(plan)
+
+
+def shift_future_plans_after(current_plan):
+	"""
+	Wrapper to import and call the main implementation from ppc_casting_plan.py.
 	
-	if not plan.caster:
-		return
+	Ensure no overlaps for this caster after current_plan by shifting
+	future plans forward, preserving their planned_duration_minutes.
 	
-	planned_end = get_datetime(plan.end_datetime)
-	actual_end = get_datetime(plan.actual_end)
-	delta_seconds = (actual_end - planned_end).total_seconds()
-	
-	# If no deviation, nothing to do
-	if delta_seconds == 0:
-		return
-	
-	# Shift future plans starting from the old planned_end
-	shift_future_plans_for_caster(plan.name, delta_seconds, from_time=planned_end)
+	Args:
+		current_plan: PPCCastingPlan document that was just updated
+	"""
+	from swynix_mes.swynix_mes.doctype.ppc_casting_plan.ppc_casting_plan import shift_future_plans_after as _shift
+	_shift(current_plan)

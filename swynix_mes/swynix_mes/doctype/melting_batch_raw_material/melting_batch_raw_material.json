@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "row_index",
+  "posting_datetime",
   "ingredient_type",
   "ingredient",
   "item_code",
@@ -24,6 +25,13 @@
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "Sr No"
+  },
+  {
+   "description": "Timestamp when this material was charged",
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Posting Time"
   },
   {
    "fieldname": "ingredient_type",
