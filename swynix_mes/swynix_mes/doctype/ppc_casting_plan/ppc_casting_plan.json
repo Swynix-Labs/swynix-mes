@@ -23,6 +23,15 @@
   "end_datetime",
   "duration_minutes",
   "block_color",
+  "actual_timing_section",
+  "melting_start",
+  "melting_end",
+  "column_break_actual_timing",
+  "casting_start",
+  "casting_end",
+  "column_break_actual_timing2",
+  "actual_start",
+  "actual_end",
   "casting_details_section",
   "product_item",
   "alloy",
@@ -48,6 +57,9 @@
   "mes_linkage_section",
   "melting_batch",
   "mother_coil",
+  "overlap_section",
+  "overlap_flag",
+  "overlap_note",
   "notes_section",
   "remarks",
   "amended_from"
@@ -102,13 +114,13 @@
    "options": "\nA\nB\nC"
   },
   {
-   "default": "Draft",
+   "default": "Planned",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nPlanned\nReleased to Melting\nIn Process\nCompleted\nCancelled"
+   "options": "Planned\nReleased\nMelting\nMetal Ready\nCasting\nCoils Complete\nNot Produced"
   },
   {
    "fieldname": "schedule_section",
@@ -135,17 +147,19 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "Planned start time",
    "fieldname": "start_datetime",
    "fieldtype": "Datetime",
    "in_list_view": 1,
-   "label": "Start Datetime",
+   "label": "Planned Start",
    "reqd": 1
   },
   {
+   "description": "Planned end time",
    "fieldname": "end_datetime",
    "fieldtype": "Datetime",
    "in_list_view": 1,
-   "label": "End Datetime",
+   "label": "Planned End",
    "reqd": 1
   },
   {
@@ -160,6 +174,62 @@
    "fieldname": "block_color",
    "fieldtype": "Data",
    "label": "Block Color"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "actual_timing_section",
+   "fieldtype": "Section Break",
+   "label": "Actual Timing"
+  },
+  {
+   "description": "When melting process started",
+   "fieldname": "melting_start",
+   "fieldtype": "Datetime",
+   "label": "Melting Start",
+   "read_only": 1
+  },
+  {
+   "description": "When melting completed (transferred to holder)",
+   "fieldname": "melting_end",
+   "fieldtype": "Datetime",
+   "label": "Melting End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_actual_timing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "When casting (first coil) started",
+   "fieldname": "casting_start",
+   "fieldtype": "Datetime",
+   "label": "Casting Start",
+   "read_only": 1
+  },
+  {
+   "description": "When casting (last coil) completed",
+   "fieldname": "casting_end",
+   "fieldtype": "Datetime",
+   "label": "Casting End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_actual_timing2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Actual overall start (same as melting_start)",
+   "fieldname": "actual_start",
+   "fieldtype": "Datetime",
+   "label": "Actual Start",
+   "read_only": 1
+  },
+  {
+   "description": "Actual overall end (same as casting_end)",
+   "fieldname": "actual_end",
+   "fieldtype": "Datetime",
+   "label": "Actual End",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.plan_type=='Casting'",
@@ -215,7 +285,7 @@
    "description": "Planned strip/coil width in mm",
    "fieldname": "planned_width_mm",
    "fieldtype": "Float",
-   "label": "Planned Width (mm)",
+   "label": "Cast Width (mm)",
    "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "2"
   },
@@ -224,7 +294,7 @@
    "description": "Planned thickness/gauge in mm",
    "fieldname": "planned_gauge_mm",
    "fieldtype": "Float",
-   "label": "Planned Gauge (mm)",
+   "label": "Final Gauge (mm)",
    "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "3"
   },
@@ -237,7 +307,7 @@
    "description": "Planned cast weight in MT",
    "fieldname": "planned_weight_mt",
    "fieldtype": "Float",
-   "label": "Planned Weight (MT)",
+   "label": "Cast Weight (MT)",
    "mandatory_depends_on": "eval:doc.plan_type=='Casting'",
    "precision": "3"
   },
@@ -338,6 +408,27 @@
   },
   {
    "collapsible": 1,
+   "fieldname": "overlap_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule Conflicts"
+  },
+  {
+   "default": "0",
+   "description": "Set to 1 if automatic rescheduling caused a conflict",
+   "fieldname": "overlap_flag",
+   "fieldtype": "Check",
+   "label": "Overlap Flag",
+   "read_only": 1
+  },
+  {
+   "description": "Details about scheduling conflict that needs manual resolution",
+   "fieldname": "overlap_note",
+   "fieldtype": "Small Text",
+   "label": "Overlap Note",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
    "fieldname": "notes_section",
    "fieldtype": "Section Break",
    "label": "Notes"
@@ -361,7 +452,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-04 15:20:00.000000",
+ "modified": "2025-12-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "PPC Casting Plan",
@@ -412,5 +503,3 @@
  "title_field": "cast_no",
  "track_changes": 1
 }
-
-

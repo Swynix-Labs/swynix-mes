@@ -18,6 +18,11 @@
   "heat_number",
   "batch_number",
   "customer_coil_no",
+  "sb_timing",
+  "coil_start_time",
+  "coil_end_time",
+  "column_break_timing",
+  "cast_datetime",
   "sb_specs",
   "alloy",
   "temper",
@@ -30,7 +35,6 @@
   "column_break_specs2",
   "inner_dia_mm",
   "outer_dia_mm",
-  "cast_datetime",
   "sb_status",
   "coil_status",
   "current_stage",
@@ -128,6 +132,33 @@
    "label": "Customer Coil No."
   },
   {
+   "fieldname": "sb_timing",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "description": "When casting of this coil started",
+   "fieldname": "coil_start_time",
+   "fieldtype": "Datetime",
+   "label": "Coil Start Time"
+  },
+  {
+   "description": "When casting of this coil completed",
+   "fieldname": "coil_end_time",
+   "fieldtype": "Datetime",
+   "label": "Coil End Time"
+  },
+  {
+   "fieldname": "column_break_timing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Legacy field - use coil_start_time/coil_end_time for precise timing",
+   "fieldname": "cast_datetime",
+   "fieldtype": "Datetime",
+   "label": "Cast Date & Time"
+  },
+  {
    "fieldname": "sb_specs",
    "fieldtype": "Section Break",
    "label": "Coil Specifications"
@@ -201,11 +232,6 @@
    "fieldtype": "Float",
    "label": "Outer Dia (mm)",
    "precision": "2"
-  },
-  {
-   "fieldname": "cast_datetime",
-   "fieldtype": "Datetime",
-   "label": "Cast Date & Time"
   },
   {
    "fieldname": "sb_status",
@@ -323,7 +349,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-04 22:00:00.000000",
+ "modified": "2025-12-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Coil",

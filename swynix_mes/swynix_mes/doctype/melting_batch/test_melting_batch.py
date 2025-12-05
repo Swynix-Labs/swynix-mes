@@ -45,3 +45,4 @@ class TestMeltingBatch(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			doc.validate_datetime_sequence()
 
+

@@ -6,50 +6,52 @@
 	min-height: calc(100vh - 60px);
 }
 
-/* Header */
+/* Header - Compact */
 .mk-header {
 	background: var(--card-bg, #fff);
 	border: 1px solid var(--border-color, #d1d8dd);
 	border-radius: var(--border-radius, 8px);
-	padding: 15px;
+	padding: 10px 15px;
 	margin-bottom: 15px;
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	flex-wrap: wrap;
 	gap: 15px;
 }
 
 .mk-header .filters {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	flex-wrap: wrap;
+	gap: 8px;
+	flex-wrap: nowrap;
+}
+
+.mk-header .filter-group {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .mk-header label {
 	font-weight: 500;
-	color: var(--text-color, #333);
+	font-size: 12px;
+	color: var(--text-muted, #6c757d);
 	margin: 0;
+	white-space: nowrap;
 }
 
 .mk-header .form-control {
-	height: 32px;
+	height: 28px;
 	border-radius: var(--border-radius-sm, 4px);
 	border: 1px solid var(--border-color, #d1d8dd);
-	min-width: 150px;
+	min-width: 120px;
+	font-size: 12px;
+	padding: 0 8px;
 }
 
-.mk-header .btn-primary-dark {
-	background: var(--primary, #2490ef);
-	color: #fff;
-	border: none;
-	padding: 8px 16px;
-	font-weight: 500;
-}
-
-.mk-header .btn-primary-dark:hover {
-	background: var(--primary-dark, #1a73e8);
+.mk-header .btn-sm {
+	height: 28px;
+	padding: 0 10px;
+	font-size: 12px;
 }
 
 /* Sidebar panels */
@@ -206,6 +208,98 @@
 .batch-status-melting { background: #ffedd5; color: #c2410c; }
 .batch-status-ready { background: #fef3c7; color: #b45309; }
 .batch-status-transferred { background: #d1fae5; color: #047857; }
+
+/* Furnace Busy/Free Indicator */
+.mk-furnace-indicator {
+	font-size: 11px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-weight: 600;
+	margin-left: 10px;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.mk-furnace-busy {
+	background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+	color: #dc2626;
+	border: 1px solid #fecaca;
+	animation: pulse-busy 2s infinite;
+}
+
+.mk-furnace-free {
+	background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+	color: #16a34a;
+	border: 1px solid #bbf7d0;
+}
+
+@keyframes pulse-busy {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+
+/* Spectro Table Styles */
+.mk-spectro-table {
+	font-size: 12px;
+}
+
+.mk-spectro-table .mk-element-header {
+	text-align: center;
+	padding: 8px 6px !important;
+	min-width: 65px;
+	vertical-align: top;
+}
+
+.mk-spectro-table .mk-element-label {
+	font-weight: 600;
+	font-size: 12px;
+	color: var(--text-color, #333);
+	margin-bottom: 2px;
+}
+
+.mk-spectro-table .mk-element-spec {
+	font-size: 10px;
+	color: #64748b;
+	font-weight: normal;
+	white-space: nowrap;
+}
+
+.mk-spectro-table .mk-sample-val {
+	text-align: center;
+	font-family: monospace;
+	font-size: 11px;
+	padding: 8px 4px !important;
+}
+
+.mk-spectro-table .mk-sample-val.mk-in-spec {
+	background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+	color: #047857;
+	font-weight: 500;
+}
+
+.mk-spectro-table .mk-sample-val.mk-out-of-spec {
+	background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+	color: #dc2626;
+	font-weight: 700;
+}
+
+.mk-spectro-table .mk-row-has-issues {
+	border-left: 3px solid #ef4444;
+}
+
+.mk-spectro-table .mk-spec-summary-row {
+	background: #fef2f2 !important;
+}
+
+.mk-spectro-table .mk-spec-summary-row td {
+	padding: 4px 10px !important;
+	border-top: none !important;
+}
+
+.mk-spectro-table .mk-spec-summary-row:hover td {
+	background: #fef2f2 !important;
+}
 
 /* Main Content Panel */
 .mk-main-panel {
@@ -472,20 +566,21 @@
 </style>
 
 <div class="melting-kiosk">
-	<!-- Header -->
+	<!-- Header - Compact -->
 	<div class="mk-header">
 		<div class="filters">
-			<label>Furnace</label>
-			<select id="mk_furnace_select" class="form-control"></select>
-			<label>Date</label>
-			<input type="date" id="mk_plan_date" class="form-control">
+			<div class="filter-group">
+				<label>Furnace</label>
+				<select id="mk_furnace_select" class="form-control"></select>
+			</div>
+			<div class="filter-group">
+				<label>Date</label>
+				<input type="date" id="mk_plan_date" class="form-control">
+			</div>
 			<button type="button" class="btn btn-default btn-sm" id="mk_btn_refresh">
-				<i class="fa fa-refresh"></i> Refresh
+				<i class="fa fa-refresh"></i>
 			</button>
 		</div>
-		<button type="button" class="btn btn-primary-dark" id="mk_btn_new_batch">
-			<i class="fa fa-plus"></i> Start New Melting Batch
-		</button>
 	</div>
 
 	<div class="row">

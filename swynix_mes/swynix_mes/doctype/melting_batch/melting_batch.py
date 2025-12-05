@@ -4,7 +4,15 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate
+from frappe.utils import flt, getdate, now_datetime, get_datetime
+
+# Active statuses that indicate a batch is occupying the furnace
+ACTIVE_BATCH_STATUSES = [
+	"Charging", "Melting", "Fluxing", "Sampling", "Correction", "Ready for Transfer"
+]
+
+# Statuses that indicate processing has begun (block cancellation)
+PROCESSING_STARTED_STATUSES = ["Charging", "Melting", "Ready for Transfer", "Transferred", "Scrapped"]
 
 
 class MeltingBatch(Document):
@@ -14,9 +22,14 @@ class MeltingBatch(Document):
 		self.calculate_yield_percent()
 		self.validate_datetime_sequence()
 		self.validate_status_workflow()
+		self.validate_single_active_batch_per_furnace()
 
 	def before_submit(self):
 		self.validate_submit_status()
+
+	def before_cancel(self):
+		"""Validate that batch can be cancelled"""
+		self.validate_can_cancel()
 
 	def set_melting_batch_id(self):
 		"""Set melting_batch_id from name if not already set"""
@@ -61,6 +74,7 @@ class MeltingBatch(Document):
 	def validate_status_workflow(self):
 		"""Validate status transitions follow the workflow:
 		Draft → Charging → Melting → Ready for Transfer → Transferred
+		                                               → Scrapped
 		"""
 		if self.is_new():
 			return
@@ -77,12 +91,12 @@ class MeltingBatch(Document):
 
 		# Define valid transitions
 		valid_transitions = {
-			"Draft": ["Charging", "Cancelled"],
-			"Charging": ["Melting", "Cancelled"],
-			"Melting": ["Ready for Transfer", "Cancelled"],
-			"Ready for Transfer": ["Transferred", "Cancelled"],
+			"Draft": ["Charging", "Scrapped"],
+			"Charging": ["Melting", "Scrapped"],
+			"Melting": ["Ready for Transfer", "Scrapped"],
+			"Ready for Transfer": ["Transferred", "Scrapped"],
 			"Transferred": [],  # Terminal state
-			"Cancelled": ["Draft"]  # Can reopen to Draft
+			"Scrapped": []  # Terminal state
 		}
 
 		allowed = valid_transitions.get(old_status, [])
@@ -94,13 +108,217 @@ class MeltingBatch(Document):
 			)
 
 	def validate_submit_status(self):
-		"""Only allow submission when status is Transferred"""
-		if self.status != "Transferred":
+		"""Only allow submission when status is Transferred or Scrapped"""
+		if self.status not in ["Transferred", "Scrapped"]:
 			frappe.throw(
-				_("Melting Batch can only be submitted when status is 'Transferred'. Current status: '{0}'").format(
-					self.status
-				)
+				_("Melting Batch can only be submitted when status is 'Transferred' or 'Scrapped'. "
+				  "Current status: '{0}'").format(self.status)
 			)
+
+	def validate_can_cancel(self):
+		"""
+		Validate that batch can be cancelled.
+		
+		A Melting Batch can be Cancelled/Deleted only if:
+		- status == "Draft" AND
+		- No raw materials have been added (raw_materials child table is empty) AND
+		- No process events exist (burner start, fluxing, samples)
+		
+		Once any of those exist, block cancel with a clear error message.
+		"""
+		# Check if status allows cancellation
+		if self.status != "Draft":
+			frappe.throw(
+				_("Melting Batch cannot be cancelled – material has already been processed. "
+				  "Current status: '{0}'.<br><br>"
+				  "Use 'Scrapped' status if the heat was rejected.").format(self.status),
+				title=_("Cannot Cancel")
+			)
+		
+		# Check if raw materials exist
+		if self.raw_materials and len(self.raw_materials) > 0:
+			frappe.throw(
+				_("Melting Batch cannot be cancelled – raw materials have been added ({0} items).<br><br>"
+				  "Use 'Scrapped' status if the heat was rejected.").format(len(self.raw_materials)),
+				title=_("Cannot Cancel")
+			)
+		
+		# Check if process logs exist
+		if self.process_logs and len(self.process_logs) > 0:
+			frappe.throw(
+				_("Melting Batch cannot be cancelled – process events have been logged ({0} events).<br><br>"
+				  "Use 'Scrapped' status if the heat was rejected.").format(len(self.process_logs)),
+				title=_("Cannot Cancel")
+			)
+		
+		# Check if spectro samples exist
+		if self.spectro_samples and len(self.spectro_samples) > 0:
+			frappe.throw(
+				_("Melting Batch cannot be cancelled – spectro samples have been taken ({0} samples).<br><br>"
+				  "Use 'Scrapped' status if the heat was rejected.").format(len(self.spectro_samples)),
+				title=_("Cannot Cancel")
+			)
+
+	def validate_single_active_batch_per_furnace(self):
+		"""
+		Enforce single active melting batch per furnace.
+		A furnace may NEVER have two batches simultaneously in active statuses.
+		"""
+		if not self.furnace:
+			return
+
+		# Only check if this batch is going into an active status
+		if self.status not in ACTIVE_BATCH_STATUSES:
+			return
+
+		# Check if any other batch for the same furnace is currently active
+		existing_active = frappe.db.sql("""
+			SELECT name, status
+			FROM `tabMelting Batch`
+			WHERE furnace = %s
+			AND name != %s
+			AND status IN %s
+			AND docstatus < 2
+			LIMIT 1
+		""", (self.furnace, self.name or "", tuple(ACTIVE_BATCH_STATUSES)), as_dict=True)
+
+		if existing_active:
+			frappe.throw(
+				_("Furnace <b>{0}</b> already has an active batch <b>{1}</b> (Status: {2}).<br><br>"
+				  "Complete or Transfer the existing batch before starting a new one.").format(
+					self.furnace,
+					existing_active[0].name,
+					existing_active[0].status
+				),
+				title=_("Furnace Busy")
+			)
+
+	def on_update(self):
+		"""Actions after save - sync with Casting Plan"""
+		self.sync_to_casting_plan()
+
+	def sync_to_casting_plan(self):
+		"""
+		Sync melting batch status and timing back to the linked PPC Casting Plan.
+		
+		Rules:
+		- When batch goes to Charging (first significant action), set plan's melting_start
+		- When batch goes to Transferred, set plan's melting_end and status to Metal Ready
+		- When batch goes to Scrapped, set plan's status to Not Produced
+		"""
+		if not self.ppc_casting_plan:
+			return
+		
+		try:
+			cp = frappe.get_doc("PPC Casting Plan", self.ppc_casting_plan)
+			
+			# Don't update cancelled plans
+			if cp.docstatus == 2:
+				return
+			
+			updates = {}
+			
+			# When charging starts (first significant action)
+			if self.status == "Charging" and not cp.melting_start:
+				updates["melting_start"] = self.batch_start_datetime or now_datetime()
+				updates["actual_start"] = updates["melting_start"]
+				if cp.status in ["Planned", "Released"]:
+					updates["status"] = "Melting"
+			
+			# When status changes to Melting
+			if self.status == "Melting" and cp.status in ["Planned", "Released"]:
+				if not cp.melting_start:
+					updates["melting_start"] = self.batch_start_datetime or now_datetime()
+					updates["actual_start"] = updates["melting_start"]
+				updates["status"] = "Melting"
+			
+			# When batch is Transferred (metal ready in holder)
+			if self.status == "Transferred":
+				updates["melting_end"] = self.transfer_end_datetime or self.batch_end_datetime or now_datetime()
+				# If casting has not yet started, set status to Metal Ready
+				if cp.status in ["Melting", "Released", "Planned"]:
+					updates["status"] = "Metal Ready"
+			
+			# When batch is Scrapped
+			if self.status == "Scrapped":
+				updates["melting_end"] = now_datetime()
+				updates["status"] = "Not Produced"
+			
+			# Apply updates if any
+			if updates:
+				for field, value in updates.items():
+					cp.db_set(field, value, update_modified=True)
+				
+		except Exception as e:
+			# Log error but don't block the save
+			frappe.log_error(
+				title="Melting Batch → Casting Plan Sync Error",
+				message=f"Error syncing batch {self.name} to plan {self.ppc_casting_plan}: {str(e)}"
+			)
+
+	def mark_melting_started_if_first_time(self):
+		"""
+		Called when the first irreversible melting action happens
+		(e.g., Burner Start, first raw material charge, etc.).
+
+		Behaviour:
+		- Only runs once per batch.
+		- If linked ppc_casting_plan exists and its melting hasn't started yet,
+		  we update casting_plan.melting_start & actual_start.
+		- We then move the PPC plan to start at this actual time,
+		  preserving duration, and shift all future not-started plans
+		  on that caster by the same delta.
+		"""
+		if not self.ppc_casting_plan:
+			return
+
+		from swynix_mes.swynix_mes.utils.ppc_scheduler import shift_future_plans_for_caster
+
+		cp = frappe.get_doc("PPC Casting Plan", self.ppc_casting_plan)
+
+		# If already recorded melting_start, do nothing.
+		if getattr(cp, "melting_start", None):
+			return
+
+		now_ts = now_datetime()
+
+		# Original planned times BEFORE we move anything.
+		old_planned_start = get_datetime(cp.start_datetime) if cp.start_datetime else None
+		old_planned_end = get_datetime(cp.end_datetime) if cp.end_datetime else None
+
+		# Set melting / actual start timestamps & status.
+		cp.melting_start = now_ts
+		cp.actual_start = now_ts
+		# If it's still Planned/Released, bump status to "Melting"
+		if cp.status in ("Planned", "Released"):
+			cp.status = "Melting"
+
+		delta_seconds = 0.0
+
+		if old_planned_start and old_planned_end:
+			duration = old_planned_end - old_planned_start  # timedelta
+
+			# delta between actual vs original start
+			delta_seconds = (now_ts - old_planned_start).total_seconds()
+
+			# Move this plan itself to the actual melting start
+			cp.start_datetime = now_ts
+			cp.end_datetime = now_ts + duration
+
+		cp.save(ignore_permissions=True)
+
+		# Shift future plans on this caster, starting from original start time
+		if delta_seconds and old_planned_start:
+			shift_future_plans_for_caster(
+				casting_plan_name=cp.name,
+				delta_seconds=delta_seconds,
+				from_time=old_planned_start,
+			)
+
+	# Legacy alias for backward compatibility
+	def mark_melting_started(self):
+		"""Legacy alias for mark_melting_started_if_first_time()"""
+		self.mark_melting_started_if_first_time()
 
 	@frappe.whitelist()
 	def set_status(self, new_status):
@@ -117,8 +335,12 @@ class MeltingBatch(Document):
 		
 		self.status = "Charging"
 		if not self.batch_start_datetime:
-			self.batch_start_datetime = frappe.utils.now_datetime()
+			self.batch_start_datetime = now_datetime()
 		self.save()
+		
+		# Trigger melting started logic (shifts schedule)
+		self.mark_melting_started_if_first_time()
+		
 		return self.status
 
 	@frappe.whitelist()
@@ -148,7 +370,7 @@ class MeltingBatch(Document):
 			frappe.throw(_("Transfer can only start when status is 'Ready for Transfer'"))
 		
 		if not self.transfer_start_datetime:
-			self.transfer_start_datetime = frappe.utils.now_datetime()
+			self.transfer_start_datetime = now_datetime()
 		self.save()
 		return self.status
 
@@ -160,9 +382,23 @@ class MeltingBatch(Document):
 		
 		self.status = "Transferred"
 		if not self.transfer_end_datetime:
-			self.transfer_end_datetime = frappe.utils.now_datetime()
+			self.transfer_end_datetime = now_datetime()
 		if not self.batch_end_datetime:
-			self.batch_end_datetime = frappe.utils.now_datetime()
+			self.batch_end_datetime = now_datetime()
+		self.save()
+		return self.status
+
+	@frappe.whitelist()
+	def mark_scrapped(self, reason=None):
+		"""Mark batch as Scrapped (rejected heat)"""
+		if self.status in ["Transferred", "Scrapped"]:
+			frappe.throw(_("Cannot scrap a batch that is already {0}").format(self.status))
+		
+		self.status = "Scrapped"
+		if not self.batch_end_datetime:
+			self.batch_end_datetime = now_datetime()
+		if reason:
+			self.remarks = (self.remarks or "") + f"\n[SCRAPPED] {reason}"
 		self.save()
 		return self.status
 
@@ -264,4 +500,3 @@ def get_melting_batch_summary(melting_batch):
 		"raw_material_count": len(doc.raw_materials or []),
 		"spectro_sample_count": len(doc.spectro_samples or [])
 	}
-

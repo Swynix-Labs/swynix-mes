@@ -135,6 +135,89 @@ function load_casters() {
 	});
 }
 
+/**
+ * Get status color based on plan status
+ * @param {string} status - Plan status
+ * @returns {string} Hex color code
+ */
+function getStatusColor(status) {
+	switch (status) {
+		case "Planned":        return "#9e9e9e"; // grey
+		case "Released":       return "#607d8b"; // blue-grey
+		case "Melting":        return "#2196f3"; // blue
+		case "Metal Ready":    return "#00bcd4"; // teal
+		case "Casting":        return "#ff9800"; // orange
+		case "Coils Complete": return "#4caf50"; // green
+		case "Not Produced":   return "#f44336"; // red
+		default:               return "#9e9e9e"; // grey
+	}
+}
+
+/**
+ * Format time as HH:MM
+ * @param {string|Date} datetime - Datetime to format
+ * @returns {string} Formatted time
+ */
+function formatTime(datetime) {
+	if (!datetime) return '';
+	const dt = typeof datetime === 'string' ? new Date(datetime) : datetime;
+	return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/**
+ * Build tooltip content for a plan
+ * @param {Object} p - Plan object
+ * @returns {string} HTML tooltip content
+ */
+function buildTooltip(p) {
+	let lines = [];
+	
+	// First line: product_item (alloy / temper) | weight MT
+	let line1 = `${p.product_item || 'N/A'} (${p.alloy || '-'} / ${p.temper || '-'})`;
+	if (p.planned_weight_mt) {
+		line1 += ` | ${p.planned_weight_mt} MT`;
+	}
+	lines.push(line1);
+	
+	// Second line: Melt timing if available
+	if (p.melting_start || p.melting_end) {
+		let meltLine = 'Melt: ';
+		meltLine += formatTime(p.melting_start) || '--:--';
+		meltLine += ' – ';
+		meltLine += formatTime(p.melting_end) || '--:--';
+		lines.push(meltLine);
+	}
+	
+	// Third line: Cast timing if available
+	if (p.casting_start || p.casting_end) {
+		let castLine = 'Cast: ';
+		castLine += formatTime(p.casting_start) || '--:--';
+		castLine += ' – ';
+		castLine += formatTime(p.casting_end) || '--:--';
+		lines.push(castLine);
+	}
+	
+	// Status
+	lines.push(`Status: ${p.status || 'Unknown'}`);
+	
+	// Furnace if available
+	if (p.furnace) {
+		lines.push(`Furnace: ${p.furnace}`);
+	}
+	
+	// Customer if available
+	if (p.customer) {
+		lines.push(`Customer: ${p.customer}`);
+	}
+	
+	// Overlap warning if flagged
+	if (p.overlap_flag) {
+		lines.push(`⚠️ Schedule Conflict`);
+	}
+	
+	return lines.join('\n');
+}
+
 function init_calendar() {
 	let calendarEl = document.getElementById('ppc_calendar');
 	if (!calendarEl) return;
@@ -168,6 +251,19 @@ function init_calendar() {
 			fetch_events(fetchInfo.startStr, fetchInfo.endStr)
 				.then(events => successCallback(events))
 				.catch(err => failureCallback(err));
+		},
+		
+		// Event rendering - add tooltip
+		eventDidMount: function(info) {
+			const tooltip = info.event.extendedProps.tooltip;
+			if (tooltip) {
+				info.el.setAttribute('title', tooltip);
+			}
+			
+			// Add overlap indicator
+			if (info.event.extendedProps.overlap_flag) {
+				info.el.style.border = '2px dashed #f44336';
+			}
 		}
 	});
 
@@ -196,29 +292,45 @@ function fetch_events(start, end) {
 	}).then(r => {
 		const plans = r.message || [];
 		return plans.map(p => {
+			// Build title
 			let title = p.plan_type === "Downtime"
 				? `DT: ${p.downtime_type || ''}`
 				: `${p.product_item || ''} (${p.alloy || ''} / ${p.temper || ''})`;
 			
-			// Add furnace info if available
-			if (p.furnace && p.plan_type !== "Downtime") {
-				title += ` | F: ${p.furnace}`;
+			// Add weight info if available
+			if (p.plan_type !== "Downtime" && p.planned_weight_mt) {
+				title += ` | ${p.planned_weight_mt} MT`;
 			}
 
-			let color = p.plan_type === "Downtime" ? '#e74c3c' : '#2ecc71';
+			// Determine event start/end using actual times when available
+			// Priority: actual_start > melting_start > start_datetime (planned)
+			const eventStart = p.actual_start || p.melting_start || p.start_datetime;
+			// Priority: actual_end > casting_end > end_datetime (planned)
+			const eventEnd = p.actual_end || p.casting_end || p.end_datetime;
+
+			// Get color based on status
+			let color = p.plan_type === "Downtime" ? '#e74c3c' : getStatusColor(p.status);
+			
+			// If overlap flagged, use a warning color
+			if (p.overlap_flag) {
+				color = '#ff5722'; // deep orange for overlap warning
+			}
 
 			return {
 				id: p.name,
 				title: title,
-				start: p.start_datetime,
-				end: p.end_datetime,
+				start: eventStart,
+				end: eventEnd,
 				backgroundColor: color,
 				borderColor: color,
 				extendedProps: {
 					docname: p.name,
 					plan_type: p.plan_type,
 					status: p.status,
-					furnace: p.furnace
+					furnace: p.furnace,
+					tooltip: buildTooltip(p),
+					overlap_flag: p.overlap_flag,
+					overlap_note: p.overlap_note
 				}
 			};
 		});

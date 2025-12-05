@@ -6,6 +6,53 @@ from frappe import _
 from frappe.utils import getdate, now_datetime, get_datetime, flt
 from datetime import timedelta
 
+# Active statuses that indicate a batch is occupying the furnace
+ACTIVE_BATCH_STATUSES = [
+    "Charging", "Melting", "Fluxing", "Sampling", "Correction", "Ready for Transfer"
+]
+
+
+# ==================== FURNACE AVAILABILITY CHECK ====================
+
+@frappe.whitelist()
+def check_furnace_availability(furnace):
+    """
+    Check if a furnace is free (no active batch running).
+    
+    Returns:
+        dict with:
+            - is_free: bool - True if furnace is free
+            - active_batch: str or None - Name of active batch if busy
+            - active_status: str or None - Status of active batch if busy
+    """
+    if not furnace:
+        return {"is_free": True, "active_batch": None, "active_status": None}
+    
+    # Check for any active batch on this furnace
+    active_batch = frappe.db.sql("""
+        SELECT name, status
+        FROM `tabMelting Batch`
+        WHERE furnace = %s
+        AND status IN %s
+        AND docstatus < 2
+        LIMIT 1
+    """, (furnace, tuple(ACTIVE_BATCH_STATUSES)), as_dict=True)
+    
+    if active_batch:
+        return {
+            "is_free": False,
+            "active_batch": active_batch[0].name,
+            "active_status": active_batch[0].status
+        }
+    
+    return {"is_free": True, "active_batch": None, "active_status": None}
+
+
+@frappe.whitelist()
+def get_active_batch_statuses():
+    """Return list of statuses that indicate a batch is active/occupying furnace."""
+    return ACTIVE_BATCH_STATUSES
+
 
 # ==================== CASTING PLAN INTEGRATION ====================
 
@@ -80,7 +127,7 @@ def start_batch_from_cast_plan(plan_name):
     - Melting Batch.ppc_casting_plan = plan_name
     - Copies alloy, product_item, planned_weight_mt and workstation->furnace
     - Links plan.melting_batch (if the field exists)
-    - DOES NOT change plan.status (avoid workflow / submit errors)
+    - Triggers schedule shift if melting starts earlier/later than planned
     """
     if not plan_name:
         frappe.throw(_("Casting Plan is required."))
@@ -109,7 +156,7 @@ def start_batch_from_cast_plan(plan_name):
 
     batch.insert()
 
-    # Link back to plan WITHOUT touching status (respect workflow)
+    # Link back to plan
     try:
         meta_fields = [d.fieldname for d in plan.meta.get("fields")]
         if "melting_batch" in meta_fields:
@@ -125,6 +172,17 @@ def start_batch_from_cast_plan(plan_name):
         frappe.log_error(
             title="PPC Casting Plan link error",
             message=f"Could not set melting_batch for plan {plan.name}"
+        )
+
+    # Trigger melting started logic - this shifts the schedule if needed
+    # (when actual start differs from planned start)
+    try:
+        batch.mark_melting_started_if_first_time()
+    except Exception as e:
+        # Log but don't fail the batch creation
+        frappe.log_error(
+            title="Melting Start Schedule Shift Error",
+            message=f"Error shifting schedule for batch {batch.name}: {str(e)}"
         )
 
     return {
@@ -239,11 +297,18 @@ def add_raw_material_row(batch_name, item_code, qty_kg, ingredient_type=None,
                          batch_no=None, source_bin=None, bucket_no=None, is_correction=0):
     """
     Append a raw material row (normal or correction) to Melting Batch.
+    If is_correction is True, also creates a Process Log entry with event_type='Correction'.
+    
+    For the first raw material addition (not correction), this also triggers
+    the schedule shift logic if melting starts earlier/later than planned.
     """
     if not batch_name:
         frappe.throw(_("Melting Batch is required."))
 
     doc = frappe.get_doc("Melting Batch", batch_name)
+
+    # Check if this is the first raw material (not correction) - for schedule shift
+    is_first_charge = (len(doc.raw_materials) == 0 and not int(is_correction or 0))
 
     # Auto-assign row_index
     row_index = len(doc.raw_materials) + 1
@@ -259,10 +324,33 @@ def add_raw_material_row(batch_name, item_code, qty_kg, ingredient_type=None,
     row.is_correction = int(is_correction or 0)
 
     # Auto-fetch item_name
+    item_name = None
     if item_code:
         item = frappe.db.get_value("Item", item_code, ["item_name"], as_dict=True)
         if item:
             row.item_name = item.item_name
+            item_name = item.item_name
+
+    # If this is a correction, also log it in process_logs
+    if int(is_correction or 0):
+        # Build a summary note for the process log
+        summary_parts = []
+        if item_name:
+            summary_parts.append(item_name)
+        elif item_code:
+            summary_parts.append(item_code)
+        if row.qty_kg:
+            summary_parts.append(f"{row.qty_kg} kg")
+        if ingredient_type:
+            summary_parts.append(f"({ingredient_type})")
+        
+        summary = " - ".join(str(p) for p in summary_parts) if summary_parts else "Chemical correction"
+        
+        # Append process log entry for the correction
+        plog = doc.append("process_logs", {})
+        plog.log_time = now_datetime()
+        plog.event_type = "Correction"
+        plog.note = summary
 
     # Recalculate charged_weight_mt and yield%
     total_kg = sum([flt(r.qty_kg) for r in doc.raw_materials])
@@ -273,6 +361,17 @@ def add_raw_material_row(batch_name, item_code, qty_kg, ingredient_type=None,
 
     doc.save()
     frappe.db.commit()
+
+    # Trigger melting started logic on first charge
+    # This shifts the schedule if actual start differs from planned start
+    if is_first_charge:
+        try:
+            doc.mark_melting_started_if_first_time()
+        except Exception as e:
+            frappe.log_error(
+                title="First Charge Schedule Shift Error",
+                message=f"Error shifting schedule for batch {batch_name}: {str(e)}"
+            )
 
     return {
         "row_name": row.name,
@@ -293,6 +392,9 @@ def log_process_event(batch_name, event_type, temp_c=None, pressure_bar=None,
     - Holding
     - Transfer
     - Other
+    
+    For Burner On events, this also triggers the schedule shift logic
+    if melting starts earlier/later than planned.
     """
     if not batch_name:
         frappe.throw(_("Melting Batch is required."))
@@ -313,11 +415,23 @@ def log_process_event(batch_name, event_type, temp_c=None, pressure_bar=None,
     row.note = note
 
     # Set batch_start on first Burner On
-    if event_type == "Burner On" and not doc.batch_start_datetime:
+    is_first_burner_on = (event_type == "Burner On" and not doc.batch_start_datetime)
+    if is_first_burner_on:
         doc.batch_start_datetime = row.log_time
 
     doc.save()
     frappe.db.commit()
+
+    # Trigger melting started logic on first Burner On
+    # This shifts the schedule if actual start differs from planned start
+    if is_first_burner_on:
+        try:
+            doc.mark_melting_started_if_first_time()
+        except Exception as e:
+            frappe.log_error(
+                title="Burner Start Schedule Shift Error",
+                message=f"Error shifting schedule for batch {batch_name}: {str(e)}"
+            )
 
     return {
         "name": row.name,
@@ -687,5 +801,317 @@ def get_batch_detail(batch_name):
             }
             for s in doc.spectro_samples
         ]
+    }
+
+
+# ==================== SPECTRO SAMPLES WITH COMPOSITION SPEC ====================
+
+# Mapping of element codes to spectro sample field names
+ELEMENT_FIELD_MAP = {
+    "Si": "si_percent",
+    "Fe": "fe_percent",
+    "Cu": "cu_percent",
+    "Mn": "mn_percent",
+    "Mg": "mg_percent",
+    "Zn": "zn_percent",
+    "Ti": "ti_percent",
+    "Al": "al_percent",
+    # Add more mappings as needed
+}
+
+# Default element display order
+DEFAULT_ELEMENT_ORDER = ["Si", "Fe", "Cu", "Mn", "Mg", "Zn", "Ti", "Al"]
+
+
+def get_element_code_from_item(item_name):
+    """
+    Extract element code from item name.
+    E.g., "Si" from "Si", "Silicon" from item with name "Silicon", etc.
+    Uses common element symbols.
+    """
+    if not item_name:
+        return None
+    
+    # Common element symbol mappings
+    element_symbols = {
+        "silicon": "Si", "si": "Si",
+        "iron": "Fe", "fe": "Fe",
+        "copper": "Cu", "cu": "Cu",
+        "manganese": "Mn", "mn": "Mn",
+        "magnesium": "Mg", "mg": "Mg",
+        "zinc": "Zn", "zn": "Zn",
+        "titanium": "Ti", "ti": "Ti",
+        "aluminium": "Al", "aluminum": "Al", "al": "Al",
+        "chromium": "Cr", "cr": "Cr",
+        "nickel": "Ni", "ni": "Ni",
+        "lead": "Pb", "pb": "Pb",
+        "tin": "Sn", "sn": "Sn",
+        "vanadium": "V", "v": "V",
+        "zirconium": "Zr", "zr": "Zr",
+        "boron": "B", "b": "B",
+        "calcium": "Ca", "ca": "Ca",
+        "sodium": "Na", "na": "Na",
+        "phosphorus": "P", "p": "P",
+        "sulfur": "S", "s": "S",
+        "beryllium": "Be", "be": "Be",
+        "bismuth": "Bi", "bi": "Bi",
+        "cadmium": "Cd", "cd": "Cd",
+        "gallium": "Ga", "ga": "Ga",
+        "lithium": "Li", "li": "Li",
+        "strontium": "Sr", "sr": "Sr",
+    }
+    
+    # Try direct match first (for codes like "Si", "Fe")
+    item_lower = item_name.strip().lower()
+    if item_lower in element_symbols:
+        return element_symbols[item_lower]
+    
+    # Check if item_name is already a valid 1-2 char element symbol
+    if len(item_name) <= 2 and item_name.capitalize() in ELEMENT_FIELD_MAP:
+        return item_name.capitalize()
+    
+    # Try partial match
+    for key, symbol in element_symbols.items():
+        if key in item_lower:
+            return symbol
+    
+    return item_name  # Return as-is if no match
+
+
+def build_spec_text(rule):
+    """
+    Build spec text for display from a composition rule.
+    Returns tuple of (spec_text, condition_text)
+    """
+    condition_type = rule.get("condition_type", "Normal Limit")
+    limit_type = rule.get("limit_type", "")
+    min_pct = rule.get("min_percentage")
+    max_pct = rule.get("max_percentage")
+    sum_limit_type = rule.get("sum_limit_type", "")
+    sum_min = rule.get("sum_min_percentage")
+    sum_max = rule.get("sum_max_percentage")
+    remainder_min = rule.get("remainder_min_percentage")
+    notes = rule.get("notes", "")
+    
+    spec_text = "-"
+    condition_text = ""
+    
+    if condition_type == "Normal Limit":
+        if limit_type == "Range" and min_pct is not None and max_pct is not None:
+            spec_text = f"{flt(min_pct, 4)}–{flt(max_pct, 4)}"
+        elif limit_type == "Maximum" and max_pct is not None:
+            spec_text = f"≤ {flt(max_pct, 4)}"
+        elif limit_type == "Minimum" and min_pct is not None:
+            spec_text = f"≥ {flt(min_pct, 4)}"
+        elif limit_type == "Equal To":
+            if min_pct is not None:
+                spec_text = f"= {flt(min_pct, 4)}"
+            elif max_pct is not None:
+                spec_text = f"= {flt(max_pct, 4)}"
+        elif max_pct is not None and min_pct is None:
+            spec_text = f"≤ {flt(max_pct, 4)}"
+        elif min_pct is not None and max_pct is None:
+            spec_text = f"≥ {flt(min_pct, 4)}"
+        elif min_pct is not None and max_pct is not None:
+            spec_text = f"{flt(min_pct, 4)}–{flt(max_pct, 4)}"
+    
+    elif condition_type == "Sum Limit":
+        # Build sum group label
+        elements = []
+        if rule.get("element_1"):
+            elements.append(get_element_code_from_item(rule["element_1"]))
+        if rule.get("element_2"):
+            elements.append(get_element_code_from_item(rule["element_2"]))
+        if rule.get("element_3"):
+            elements.append(get_element_code_from_item(rule["element_3"]))
+        
+        sum_label = "+".join(elements) if elements else "Sum"
+        
+        if sum_limit_type == "Maximum" and sum_max is not None:
+            condition_text = f"{sum_label} ≤ {flt(sum_max, 4)}"
+        elif sum_limit_type == "Minimum" and sum_min is not None:
+            condition_text = f"{sum_label} ≥ {flt(sum_min, 4)}"
+        elif sum_limit_type == "Range" and sum_min is not None and sum_max is not None:
+            condition_text = f"{sum_label}: {flt(sum_min, 4)}–{flt(sum_max, 4)}"
+        elif sum_max is not None:
+            condition_text = f"{sum_label} ≤ {flt(sum_max, 4)}"
+        
+        spec_text = "Sum"
+    
+    elif condition_type == "Remainder":
+        if remainder_min is not None:
+            spec_text = f"≥ {flt(remainder_min, 4)}"
+        else:
+            spec_text = "Remainder"
+        condition_text = "Balance"
+    
+    elif condition_type == "Ratio":
+        ratio_parts = []
+        if rule.get("ratio_value_1"):
+            ratio_parts.append(str(flt(rule["ratio_value_1"], 2)))
+        if rule.get("ratio_value_2"):
+            ratio_parts.append(str(flt(rule["ratio_value_2"], 2)))
+        if rule.get("ratio_value_3"):
+            ratio_parts.append(str(flt(rule["ratio_value_3"], 2)))
+        spec_text = "Ratio"
+        condition_text = ":".join(ratio_parts) if ratio_parts else ""
+    
+    elif condition_type == "Free Text":
+        spec_text = "-"
+        condition_text = notes[:50] if notes else ""
+    
+    # Add notes to condition_text if not already set
+    if notes and not condition_text:
+        condition_text = notes[:50]
+    
+    return spec_text, condition_text
+
+
+@frappe.whitelist()
+def get_spectro_context(melting_batch):
+    """
+    Return spectro sample context for a melting batch, including:
+    - elements: List of elements with spec from Alloy Chemical Composition Master
+    - samples: List of spectro samples with values mapped to element codes
+    - sum_rules: List of sum limit rules for validation
+    
+    This is used by the Melting Kiosk to render a dynamic spectro table.
+    """
+    if not melting_batch:
+        return {"elements": [], "samples": [], "sum_rules": [], "alloy": None}
+    
+    doc = frappe.get_doc("Melting Batch", melting_batch)
+    alloy = doc.alloy
+    
+    elements = []
+    sum_rules = []
+    element_codes_added = set()
+    
+    if alloy:
+        # Find the active composition master for this alloy
+        composition_master = frappe.db.get_value(
+            "Alloy Chemical Composition Master",
+            {"alloy": alloy, "is_active": 1},
+            "name"
+        )
+        
+        if composition_master:
+            comp_doc = frappe.get_doc("Alloy Chemical Composition Master", composition_master)
+            
+            for rule in comp_doc.composition_rules or []:
+                condition_type = rule.condition_type
+                element_1 = rule.element_1
+                element_2 = rule.element_2
+                element_3 = rule.element_3
+                
+                # Build rule dict for building spec text
+                rule_dict = {
+                    "condition_type": condition_type,
+                    "limit_type": rule.limit_type,
+                    "min_percentage": rule.min_percentage,
+                    "max_percentage": rule.max_percentage,
+                    "sum_limit_type": rule.sum_limit_type,
+                    "sum_min_percentage": rule.sum_min_percentage,
+                    "sum_max_percentage": rule.sum_max_percentage,
+                    "remainder_min_percentage": rule.remainder_min_percentage,
+                    "ratio_value_1": rule.ratio_value_1,
+                    "ratio_value_2": rule.ratio_value_2,
+                    "ratio_value_3": rule.ratio_value_3,
+                    "notes": rule.notes,
+                    "element_1": element_1,
+                    "element_2": element_2,
+                    "element_3": element_3,
+                }
+                
+                spec_text, condition_text = build_spec_text(rule_dict)
+                
+                if condition_type == "Sum Limit":
+                    # Store sum rules separately for validation
+                    sum_elements = []
+                    if element_1:
+                        sum_elements.append(get_element_code_from_item(element_1))
+                    if element_2:
+                        sum_elements.append(get_element_code_from_item(element_2))
+                    if element_3:
+                        sum_elements.append(get_element_code_from_item(element_3))
+                    
+                    sum_rules.append({
+                        "elements": sum_elements,
+                        "sum_limit_type": rule.sum_limit_type,
+                        "sum_min": rule.sum_min_percentage,
+                        "sum_max": rule.sum_max_percentage,
+                        "label": condition_text
+                    })
+                else:
+                    # Normal element rule - add element_1 to elements list
+                    if element_1:
+                        code = get_element_code_from_item(element_1)
+                        if code and code not in element_codes_added:
+                            element_codes_added.add(code)
+                            elements.append({
+                                "code": code,
+                                "label": code,
+                                "spec_text": spec_text,
+                                "condition_text": condition_text,
+                                "condition_type": condition_type,
+                                "min_pct": rule.min_percentage,
+                                "max_pct": rule.max_percentage,
+                                "is_mandatory": rule.is_mandatory,
+                                "field_name": ELEMENT_FIELD_MAP.get(code, f"{code.lower()}_percent")
+                            })
+    
+    # If no composition master found, use default elements
+    if not elements:
+        for code in DEFAULT_ELEMENT_ORDER:
+            elements.append({
+                "code": code,
+                "label": code,
+                "spec_text": "-",
+                "condition_text": "",
+                "condition_type": "Normal Limit",
+                "min_pct": None,
+                "max_pct": None,
+                "is_mandatory": False,
+                "field_name": ELEMENT_FIELD_MAP.get(code, f"{code.lower()}_percent")
+            })
+    
+    # Sort elements by default order (known elements first, then others)
+    def element_sort_key(el):
+        code = el.get("code", "")
+        try:
+            return DEFAULT_ELEMENT_ORDER.index(code)
+        except ValueError:
+            return 100 + ord(code[0]) if code else 999
+    
+    elements.sort(key=element_sort_key)
+    
+    # Build samples data
+    samples = []
+    for s in doc.spectro_samples or []:
+        values = {}
+        for el in elements:
+            code = el.get("code")
+            field_name = el.get("field_name")
+            if field_name and hasattr(s, field_name):
+                values[code] = getattr(s, field_name)
+            else:
+                values[code] = None
+        
+        samples.append({
+            "name": s.name,
+            "sample_id": s.sample_id,
+            "sample_time": str(s.sample_time) if s.sample_time else None,
+            "result_status": s.result_status,
+            "correction_required": s.correction_required,
+            "remarks": s.remarks,
+            "values": values
+        })
+    
+    return {
+        "elements": elements,
+        "samples": samples,
+        "sum_rules": sum_rules,
+        "alloy": alloy,
+        "composition_master": composition_master if alloy else None
     }
 

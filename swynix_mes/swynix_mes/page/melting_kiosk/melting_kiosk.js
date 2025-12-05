@@ -5,6 +5,33 @@ var mk_current_furnace = null;
 var mk_current_date = null;
 var mk_current_batch = null;
 
+// Active statuses that indicate a batch is occupying the furnace
+const MK_ACTIVE_BATCH_STATUSES = [
+	"Charging", "Melting", "Fluxing", "Sampling", "Correction", "Ready for Transfer"
+];
+
+/**
+ * Show confirmation dialog for irreversible actions.
+ * @param {string} title - The action title
+ * @param {string} message - Description of what will happen
+ * @param {function} yes_callback - Function to call if user confirms
+ */
+function confirm_irreversible_action(title, message, yes_callback) {
+	frappe.confirm(
+		`<b>${title}</b><br><br>${message}<br><br>` +
+		`<div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-top: 8px;">` +
+		`<i class="fa fa-exclamation-triangle" style="color: #b45309;"></i> ` +
+		__("This action <b>cannot be undone</b>. Do you want to continue?") +
+		`</div>`,
+		function() {
+			yes_callback();
+		},
+		function() {
+			// User cancelled - do nothing
+		}
+	);
+}
+
 frappe.pages["melting-kiosk"].on_page_load = function(wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -42,10 +69,6 @@ function init_mk_events() {
 		refresh_all();
 	});
 
-	$(document).on("click", "#mk_btn_new_batch", function() {
-		open_new_batch_dialog();
-	});
-
 	$(document).on("click", ".mk-batch-item", function() {
 		var name = $(this).data("name");
 		$(".mk-batch-item").removeClass("active");
@@ -55,10 +78,10 @@ function init_mk_events() {
 	});
 
 	// Casting Plan - Start Melting button
-	$(document).on("click", ".mk-btn-start-from-plan", function(e) {
+	$(document).on("click", ".mk-btn-start-from-plan", async function(e) {
 		e.stopPropagation();
 		var planName = $(this).data("plan");
-		confirm_and_start_from_plan(planName);
+		await confirm_and_start_from_plan(planName);
 	});
 
 	$(document).on("click", "#mk_btn_add_rm", function() {
@@ -210,11 +233,30 @@ function render_cast_plans(plans) {
 	$container.html(html);
 }
 
-function confirm_and_start_from_plan(planName) {
+async function confirm_and_start_from_plan(planName) {
 	if (!planName) return;
 
+	// Check if furnace is free before starting
+	if (mk_current_furnace) {
+		try {
+			await check_furnace_free(mk_current_furnace);
+		} catch (e) {
+			// Error already shown by check_furnace_free
+			return;
+		}
+	}
+
 	frappe.confirm(
-		__("Start melting for this casting plan?<br><br>This will create a new Melting Batch and link it to this plan."),
+		__("<b>Start Melting for this Casting Plan?</b><br><br>" +
+		   "<div style='background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 12px;'>" +
+		   "<i class='fa fa-exclamation-triangle' style='color: #b45309;'></i> " +
+		   "<b>Important:</b> Once you start melting:" +
+		   "<ul style='margin: 8px 0 0 20px; padding: 0;'>" +
+		   "<li>A Melting Batch will be created for this plan.</li>" +
+		   "<li>This action <b>cannot be undone</b>.</li>" +
+		   "<li>This Casting Plan <b>cannot be cancelled</b> after batch creation.</li>" +
+		   "</ul></div>" +
+		   "Do you want to continue?"),
 		function() {
 			frappe.call({
 				method: "swynix_mes.swynix_mes.api.melting_kiosk.start_batch_from_cast_plan",
@@ -276,15 +318,10 @@ function render_batch_list(batches) {
 			'<div class="mk-empty">' +
 				'<div class="empty-icon"><i class="fa fa-inbox"></i></div>' +
 				'<div class="empty-text">No batches for this date</div>' +
-				'<button type="button" class="btn btn-primary btn-sm" id="mk_btn_new_batch_empty" style="margin-top: 12px;">' +
-					'<i class="fa fa-plus"></i> Create First Batch' +
-				'</button>' +
+				'<div style="font-size: 11px; color: #6c757d; margin-top: 8px;">Start a batch from the Casting Plan above</div>' +
 			'</div>'
 		);
 		clear_batch_detail();
-		$("#mk_btn_new_batch_empty").on("click", function() {
-			open_new_batch_dialog();
-		});
 		return;
 	}
 
@@ -428,10 +465,23 @@ function render_batch_header(doc, batch, plan, recipe) {
 			'</a>';
 	}
 	
+	// Furnace busy/free indicator
+	var furnaceIndicator = "";
+	if (is_batch_status_active(doc.status)) {
+		furnaceIndicator = '<span class="mk-furnace-indicator mk-furnace-busy">' +
+			'<i class="fa fa-fire"></i> Furnace Busy – Active Batch Running' +
+			'</span>';
+	} else {
+		furnaceIndicator = '<span class="mk-furnace-indicator mk-furnace-free">' +
+			'<i class="fa fa-check-circle"></i> Furnace Free' +
+			'</span>';
+	}
+	
 	$("#mk_batch_title").html(
 		'<i class="fa fa-fire" style="color: #ef4444;"></i> ' +
 		'<span>' + title + '</span> ' +
 		'<span class="batch-status ' + statusClass + '">' + doc.status + '</span> ' +
+		furnaceIndicator +
 		planLink
 	);
 
@@ -705,11 +755,96 @@ function get_event_style(event_type) {
 	return map[event_type] || "background: #f3f4f6; color: #4b5563;";
 }
 
+// Global variable for spectro context
+var mk_spectro_context = null;
+
 function render_spectro_table(doc) {
 	var $container = $("#mk_spectro_table");
 	
-	if (!doc.spectro_samples || !doc.spectro_samples.length) {
+	// Load spectro context with composition spec from backend
+	load_spectro_context(doc.name || mk_current_batch);
+}
+
+async function load_spectro_context(batch_name) {
+	/**
+	 * Load spectro context (elements with specs + samples) from backend.
+	 * Then render the spectro table.
+	 */
+	var $container = $("#mk_spectro_table");
+	
+	if (!batch_name) {
 		$container.html(
+			'<div class="mk-empty">' +
+				'<div class="empty-icon"><i class="fa fa-flask"></i></div>' +
+				'<div class="empty-text">No batch selected</div>' +
+			'</div>'
+		);
+		return;
+	}
+	
+	try {
+		const r = await frappe.call({
+			method: "swynix_mes.swynix_mes.api.melting_kiosk.get_spectro_context",
+			args: { melting_batch: batch_name }
+		});
+		
+		mk_spectro_context = r.message || { elements: [], samples: [], sum_rules: [] };
+		render_spectro_table_from_context(mk_spectro_context);
+	} catch (e) {
+		console.error("Error loading spectro context:", e);
+		$container.html(
+			'<div class="mk-empty">' +
+				'<div class="empty-icon"><i class="fa fa-exclamation-triangle"></i></div>' +
+				'<div class="empty-text">Error loading spectro data</div>' +
+			'</div>'
+		);
+	}
+}
+
+function check_value_within_spec(val, element) {
+	/**
+	 * Check if a value is within the element's specification.
+	 * Returns: true = in spec, false = out of spec, null = unknown/no spec
+	 */
+	if (val == null || val === "" || val === "-") return null;
+	
+	var x = parseFloat(val);
+	if (isNaN(x)) return null;
+	
+	var min_pct = element.min_pct;
+	var max_pct = element.max_pct;
+	
+	// If no limits defined, can't check
+	if (min_pct == null && max_pct == null) return null;
+	
+	// Check against limits
+	if (min_pct != null && x < min_pct) return false;
+	if (max_pct != null && x > max_pct) return false;
+	
+	return true;
+}
+
+function render_spectro_table_from_context(ctx) {
+	/**
+	 * Render spectro table from context data.
+	 * Shows element headers with spec text and sample values with pass/fail coloring.
+	 */
+	var $container = $("#mk_spectro_table");
+	var elements = ctx.elements || [];
+	var samples = ctx.samples || [];
+	var sum_rules = ctx.sum_rules || [];
+	
+	if (!samples.length) {
+		// Show alloy info even with no samples
+		var alloy_info = ctx.alloy ? 
+			'<div style="margin-bottom: 15px; padding: 10px; background: #f0f9ff; border-radius: 6px; font-size: 12px;">' +
+				'<i class="fa fa-info-circle" style="color: #0284c7;"></i> ' +
+				'Alloy: <b>' + frappe.utils.escape_html(ctx.alloy) + '</b>' +
+				(ctx.composition_master ? ' | Composition: <b>' + frappe.utils.escape_html(ctx.composition_master) + '</b>' : '') +
+			'</div>' : '';
+		
+		$container.html(
+			alloy_info +
 			'<div class="mk-empty">' +
 				'<div class="empty-icon"><i class="fa fa-flask"></i></div>' +
 				'<div class="empty-text">No spectro samples taken yet</div>' +
@@ -717,36 +852,128 @@ function render_spectro_table(doc) {
 		);
 		return;
 	}
-
-	var html = '<table class="mk-table">';
-	html += '<thead><tr><th>Sample ID</th><th>Time</th><th>Si %</th><th>Fe %</th><th>Cu %</th><th>Mn %</th><th>Mg %</th><th>Zn %</th><th>Ti %</th><th>Al %</th><th>Status</th><th>Correction</th></tr></thead>';
+	
+	// Build header
+	var html = '';
+	
+	// Alloy and composition master info
+	if (ctx.alloy) {
+		html += '<div style="margin-bottom: 12px; padding: 10px 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">';
+		html += '<div style="font-size: 13px;">';
+		html += '<i class="fa fa-flask" style="color: #0284c7;"></i> ';
+		html += 'Alloy: <b>' + frappe.utils.escape_html(ctx.alloy) + '</b>';
+		if (ctx.composition_master) {
+			html += ' <span style="color: #64748b;">|</span> Spec: <b>' + frappe.utils.escape_html(ctx.composition_master) + '</b>';
+		}
+		html += '</div>';
+		
+		// Show sum rules if any
+		if (sum_rules.length) {
+			html += '<div style="font-size: 11px; color: #475569;">';
+			sum_rules.forEach(function(sr, idx) {
+				if (idx > 0) html += ' | ';
+				html += '<span title="Sum rule">' + frappe.utils.escape_html(sr.label || '') + '</span>';
+			});
+			html += '</div>';
+		}
+		html += '</div>';
+	}
+	
+	// Table
+	html += '<table class="mk-table mk-spectro-table">';
+	
+	// Header row with element names and specs
+	html += '<thead><tr>';
+	html += '<th style="min-width: 70px;">Sample</th>';
+	html += '<th style="min-width: 100px;">Time</th>';
+	
+	elements.forEach(function(el) {
+		var tooltip = '';
+		if (el.condition_text) {
+			tooltip = ' title="' + frappe.utils.escape_html(el.condition_text) + '"';
+		}
+		
+		html += '<th class="mk-element-header"' + tooltip + '>';
+		html += '<div class="mk-element-label">' + frappe.utils.escape_html(el.label || el.code) + ' %</div>';
+		html += '<div class="mk-element-spec">Std: ' + frappe.utils.escape_html(el.spec_text || '-') + '</div>';
+		html += '</th>';
+	});
+	
+	html += '<th style="min-width: 80px;">Status</th>';
+	html += '<th style="min-width: 60px;">Corr?</th>';
+	html += '</tr></thead>';
+	
+	// Body rows
 	html += '<tbody>';
-
-	doc.spectro_samples.forEach(function(s) {
+	samples.forEach(function(s) {
+		// Count elements out of spec for this sample
+		var out_of_spec_count = 0;
+		var checked_count = 0;
+		
+		elements.forEach(function(el) {
+			var val = (s.values && s.values[el.code] != null) ? s.values[el.code] : null;
+			var result = check_value_within_spec(val, el);
+			if (result === false) out_of_spec_count++;
+			if (result !== null) checked_count++;
+		});
+		
+		// Determine row status
+		var row_class = '';
+		if (out_of_spec_count > 0) {
+			row_class = 'mk-row-has-issues';
+		}
+		
+		html += '<tr class="' + row_class + '">';
+		html += '<td class="text-bold">' + frappe.utils.escape_html(s.sample_id || "-") + '</td>';
+		html += '<td style="font-size: 11px;">' + (s.sample_time ? frappe.datetime.str_to_user(s.sample_time) : "-") + '</td>';
+		
+		// Element values with pass/fail coloring
+		elements.forEach(function(el) {
+			var val = (s.values && s.values[el.code] != null) ? s.values[el.code] : null;
+			var display_val = (val != null && val !== "") ? flt(val, 4) : "-";
+			var result = check_value_within_spec(val, el);
+			
+			var cell_class = 'mk-sample-val';
+			if (result === true) {
+				cell_class += ' mk-in-spec';
+			} else if (result === false) {
+				cell_class += ' mk-out-of-spec';
+			}
+			
+			html += '<td class="' + cell_class + '" data-element="' + el.code + '">' + display_val + '</td>';
+		});
+		
+		// Status
 		var status_style = "background: #f3f4f6; color: #4b5563;";
 		if (s.result_status === "Within Limit") {
 			status_style = "background: #d1fae5; color: #047857;";
 		} else if (s.result_status === "Out of Limit") {
 			status_style = "background: #fee2e2; color: #b91c1c;";
 		}
+		html += '<td><span style="' + status_style + ' padding: 2px 8px; border-radius: 4px; font-size: 10px; white-space: nowrap;">' + 
+			frappe.utils.escape_html(s.result_status || "Pending") + '</span></td>';
 		
-		html += '<tr>';
-		html += '<td class="text-bold">' + (s.sample_id || "-") + '</td>';
-		html += '<td>' + frappe.datetime.str_to_user(s.sample_time) + '</td>';
-		html += '<td>' + (s.si_percent || "-") + '</td>';
-		html += '<td>' + (s.fe_percent || "-") + '</td>';
-		html += '<td>' + (s.cu_percent || "-") + '</td>';
-		html += '<td>' + (s.mn_percent || "-") + '</td>';
-		html += '<td>' + (s.mg_percent || "-") + '</td>';
-		html += '<td>' + (s.zn_percent || "-") + '</td>';
-		html += '<td>' + (s.ti_percent || "-") + '</td>';
-		html += '<td>' + (s.al_percent || "-") + '</td>';
-		html += '<td><span style="' + status_style + ' padding: 2px 8px; border-radius: 4px; font-size: 11px;">' + (s.result_status || "Pending") + '</span></td>';
-		html += '<td>' + (s.correction_required ? '<span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Yes</span>' : '') + '</td>';
+		// Correction required
+		html += '<td>';
+		if (s.correction_required) {
+			html += '<span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Yes</span>';
+		}
+		html += '</td>';
+		
 		html += '</tr>';
+		
+		// If out of spec, show summary row
+		if (out_of_spec_count > 0) {
+			html += '<tr class="mk-spec-summary-row">';
+			html += '<td colspan="' + (elements.length + 4) + '">';
+			html += '<span style="color: #dc2626; font-size: 11px;"><i class="fa fa-exclamation-triangle"></i> ';
+			html += out_of_spec_count + ' element(s) out of spec</span>';
+			html += '</td></tr>';
+		}
 	});
-
+	
 	html += '</tbody></table>';
+	
 	$container.html(html);
 }
 
@@ -808,9 +1035,46 @@ function render_transfer_form(doc) {
 	}
 }
 
-function open_new_batch_dialog() {
+async function check_furnace_free(furnace) {
+	/**
+	 * Check if furnace is free (no active batch running).
+	 * Throws error if furnace is busy.
+	 */
+	const r = await frappe.call({
+		method: "swynix_mes.swynix_mes.api.melting_kiosk.check_furnace_availability",
+		args: { furnace: furnace }
+	});
+	
+	if (r.message && !r.message.is_free) {
+		frappe.throw(
+			__("<b>Furnace Busy</b><br><br>" +
+			   "Furnace <b>{0}</b> already has an active batch <b>{1}</b> (Status: {2}).<br><br>" +
+			   "Complete or Transfer the existing batch before starting a new one.", 
+			   [furnace, r.message.active_batch, r.message.active_status])
+		);
+	}
+	
+	return true;
+}
+
+function is_batch_status_active(status) {
+	/**
+	 * Check if a batch status indicates the batch is active (occupying furnace).
+	 */
+	return MK_ACTIVE_BATCH_STATUSES.includes(status);
+}
+
+async function open_new_batch_dialog() {
 	if (!mk_current_furnace) {
 		frappe.msgprint(__("Please select a furnace first."));
+		return;
+	}
+
+	// Check if furnace is free before opening dialog
+	try {
+		await check_furnace_free(mk_current_furnace);
+	} catch (e) {
+		// Error already shown by check_furnace_free
 		return;
 	}
 
@@ -888,12 +1152,60 @@ function open_new_batch_dialog() {
 	d.show();
 }
 
+function check_batch_is_active_for_action(action_name) {
+	/**
+	 * Check if current batch is in an active status that allows actions.
+	 * Shows error and returns false if batch is not active.
+	 */
+	if (!mk_current_batch_detail) {
+		frappe.msgprint(__("No batch data loaded. Please select a batch first."));
+		return false;
+	}
+	
+	var status = mk_current_batch_detail.status;
+	if (!is_batch_status_active(status)) {
+		frappe.msgprint({
+			title: __("Action Not Allowed"),
+			message: __("Cannot perform <b>{0}</b> action.<br><br>" +
+				"The batch status is <b>{1}</b>.<br>" +
+				"Actions are only allowed when batch is in active status: {2}",
+				[action_name, status, MK_ACTIVE_BATCH_STATUSES.join(", ")]),
+			indicator: "orange"
+		});
+		return false;
+	}
+	return true;
+}
+
 function open_add_rm_dialog(is_correction) {
 	if (!mk_current_batch) {
 		frappe.msgprint(__("Select a batch first."));
 		return;
 	}
 
+	// For corrections, check if batch is in active status
+	if (is_correction && !check_batch_is_active_for_action("Correction")) {
+		return;
+	}
+
+	// Show confirmation for corrections
+	if (is_correction) {
+		confirm_irreversible_action(
+			__("Alloy Correction"),
+			__("You are about to add an <b>Alloy Correction</b> (chemical addition) for this batch.<br>" +
+			   "This will be recorded in the process log and raw materials."),
+			function() {
+				_open_add_rm_dialog_confirmed(true);
+			}
+		);
+		return;
+	}
+
+	// For regular raw material addition, open dialog directly
+	_open_add_rm_dialog_confirmed(is_correction);
+}
+
+function _open_add_rm_dialog_confirmed(is_correction) {
 	var d = new frappe.ui.Dialog({
 		title: is_correction ? __("Add Correction Charge") : __("Add Raw Material"),
 		fields: [
@@ -972,6 +1284,23 @@ function open_flux_dialog() {
 		return;
 	}
 
+	// Check if batch is in active status
+	if (!check_batch_is_active_for_action("Fluxing")) {
+		return;
+	}
+
+	// Show confirmation first
+	confirm_irreversible_action(
+		__("Fluxing"),
+		__("You are about to log a <b>Fluxing</b> event for this melting batch.<br>" +
+		   "This will record flux addition to the melt."),
+		function() {
+			_open_flux_dialog_confirmed();
+		}
+	);
+}
+
+function _open_flux_dialog_confirmed() {
 	var d = new frappe.ui.Dialog({
 		title: __("Log Fluxing Event"),
 		fields: [
@@ -1032,6 +1361,28 @@ function log_process_event(event_type) {
 		return;
 	}
 
+	// Check if batch is in active status
+	if (!check_batch_is_active_for_action(event_type)) {
+		return;
+	}
+
+	// Show confirmation for Burner Start
+	if (event_type === "Burner On") {
+		confirm_irreversible_action(
+			__("Burner Start"),
+			__("You are about to log <b>Burner Start</b> for this melting batch.<br>" +
+			   "This marks the beginning of the melting process."),
+			function() {
+				_log_process_event_confirmed(event_type);
+			}
+		);
+	} else {
+		// Other events - log directly
+		_log_process_event_confirmed(event_type);
+	}
+}
+
+function _log_process_event_confirmed(event_type) {
 	frappe.call({
 		method: "swynix_mes.swynix_mes.api.melting_kiosk.log_process_event",
 		args: {
@@ -1054,6 +1405,23 @@ function create_sample() {
 		return;
 	}
 
+	// Check if batch is in active status
+	if (!check_batch_is_active_for_action("Sample")) {
+		return;
+	}
+
+	// Show confirmation first
+	confirm_irreversible_action(
+		__("Take Spectro Sample"),
+		__("You are about to register a new <b>Spectro Sample</b> (S1, S2, etc.).<br>" +
+		   "This will create a sample record for lab analysis."),
+		function() {
+			_create_sample_confirmed();
+		}
+	);
+}
+
+function _create_sample_confirmed() {
 	frappe.call({
 		method: "swynix_mes.swynix_mes.api.melting_kiosk.create_sample",
 		args: { batch_name: mk_current_batch },
@@ -1074,8 +1442,10 @@ function mark_charging_complete() {
 		return;
 	}
 
-	frappe.confirm(
-		__("Mark charging as complete? This will change status to Melting."),
+	confirm_irreversible_action(
+		__("Charging Complete"),
+		__("You are about to mark <b>Charging as Complete</b>.<br>" +
+		   "This will change the batch status to <b>Melting</b>."),
 		function() {
 			frappe.call({
 				method: "swynix_mes.swynix_mes.api.melting_kiosk.update_batch_status",
@@ -1102,8 +1472,10 @@ function mark_ready_for_transfer() {
 		return;
 	}
 
-	frappe.confirm(
-		__("Mark batch as Ready for Transfer?"),
+	confirm_irreversible_action(
+		__("Mark Ready for Transfer"),
+		__("You are about to mark this batch as <b>Ready for Transfer</b> to Holder.<br>" +
+		   "This indicates the melting process is complete and metal is ready to be transferred."),
 		function() {
 			frappe.call({
 				method: "swynix_mes.swynix_mes.api.melting_kiosk.mark_ready_for_transfer",
@@ -1136,8 +1508,11 @@ function complete_transfer() {
 		return;
 	}
 
-	frappe.confirm(
-		__("Complete transfer with tapped weight {0} MT?", [tapped]),
+	confirm_irreversible_action(
+		__("Transfer Metal"),
+		__("You are about to <b>complete this batch</b> and transfer metal to Holder.<br>" +
+		   "Tapped weight: <b>{0} MT</b><br><br>" +
+		   "This will finalize the melting batch and cannot be reversed.", [tapped]),
 		function() {
 			frappe.call({
 				method: "swynix_mes.swynix_mes.api.melting_kiosk.complete_transfer",

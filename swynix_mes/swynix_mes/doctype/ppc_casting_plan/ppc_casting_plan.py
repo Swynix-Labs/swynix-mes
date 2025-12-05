@@ -7,13 +7,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-# Import status constants from API
-try:
-	from swynix_mes.swynix_mes.api.ppc_caster_kiosk import SHIFTABLE_STATUSES, LOCKED_STATUSES
-except ImportError:
-	# Fallback if import fails
-	SHIFTABLE_STATUSES = ["Draft", "Planned", "Released to Melting"]
-	LOCKED_STATUSES = ["In Process", "Completed"]
+# Status lists for scheduling logic
+# Plans that can still be shifted (not yet started)
+SHIFTABLE_STATUSES = ["Planned", "Released"]
+# Plans that are locked (already in production or completed)
+LOCKED_STATUSES = ["Melting", "Metal Ready", "Casting", "Coils Complete", "Not Produced"]
 
 
 class PPCCastingPlan(Document):
@@ -73,7 +71,7 @@ class PPCCastingPlan(Document):
 		"""Set default values"""
 		# Default status
 		if not self.status:
-			self.status = "Draft"
+			self.status = "Planned"
 
 		# Auto cast_no if empty - use name after insert
 		if not self.cast_no and self.name:
@@ -185,12 +183,12 @@ class PPCCastingPlan(Document):
 		if duration.total_seconds() <= 0:
 			return
 
-		# Fetch all future plans for this caster (excluding Cancelled)
+		# Fetch all future plans for this caster that are shiftable
 		future_plans = frappe.get_all(
 			"PPC Casting Plan",
 			filters={
 				"caster": self.caster,
-				"status": ["!=", "Cancelled"],
+				"status": ["in", SHIFTABLE_STATUSES],
 				"docstatus": ["<", 2],
 				"start_datetime": [">=", self.start_datetime],
 			},
@@ -227,14 +225,14 @@ class PPCCastingPlan(Document):
 		Check for overlapping plans on the same caster.
 		
 		Status-aware overlap checking:
-		- LOCKED plans (In Process / Completed) must NEVER overlap
+		- LOCKED plans (Melting, Metal Ready, Casting, Coils Complete, Not Produced) must NEVER overlap
 		- SHIFTABLE plans that start at/after this plan's start are being shifted, so allow overlap
 		- SHIFTABLE plans that start BEFORE this plan's start must not overlap
 		"""
 		if not self.caster or not self.start_datetime or not self.end_datetime:
 			return
 
-		# 1) Always check for overlaps with LOCKED plans (In Process / Completed)
+		# 1) Always check for overlaps with LOCKED plans
 		locked_overlap = frappe.db.sql(
 			"""
 			SELECT name, status
@@ -266,7 +264,7 @@ class PPCCastingPlan(Document):
 			other = locked_overlap[0]
 			frappe.throw(
 				_("Time slot overlaps with {0} plan <b>{1}</b> on this caster. "
-				  "Cannot overlap plans that are In Process or Completed.").format(
+				  "Cannot overlap plans that are in production or completed.").format(
 					other.status, other.name
 				)
 			)
@@ -338,12 +336,154 @@ class PPCCastingPlan(Document):
 
 	def on_submit(self):
 		"""Actions on submit"""
-		if self.status == "Draft":
-			self.db_set("status", "Planned")
+		if self.status == "Planned":
+			# Keep as Planned on submit (was Draft before)
+			pass
+
+	def before_cancel(self):
+		"""Validate that plan can be cancelled"""
+		self.validate_can_cancel()
+
+	def validate_can_cancel(self):
+		"""
+		Block cancellation if melting has already started or coils have been produced.
+		
+		Cancellation is only allowed when:
+		- status is in ("Planned", "Released")
+		- linked_melting_batch is empty OR the batch is still Draft with no materials
+		"""
+		# Check status - block if already in production
+		if self.status in LOCKED_STATUSES:
+			frappe.throw(
+				_("Casting Plan cannot be cancelled because {0}.<br><br>"
+				  "If the heat was rejected, mark the Melting Batch as 'Scrapped' "
+				  "and set this plan's status to 'Not Produced'.").format(
+					self._get_cancel_block_reason()
+				),
+				title=_("Cannot Cancel")
+			)
+		
+		# Check linked melting batch
+		if self.melting_batch:
+			batch_doc = frappe.get_doc("Melting Batch", self.melting_batch)
+			if batch_doc.docstatus == 2:
+				# Batch is cancelled, OK to proceed
+				pass
+			elif batch_doc.status != "Draft":
+				frappe.throw(
+					_("Cannot cancel this Casting Plan because Melting Batch <b>{0}</b> "
+					  "has status '{1}'.<br><br>"
+					  "To cancel this plan, first cancel or scrap the Melting Batch.").format(
+						self.melting_batch, batch_doc.status
+					),
+					title=_("Plan Locked")
+				)
+			elif batch_doc.raw_materials and len(batch_doc.raw_materials) > 0:
+				frappe.throw(
+					_("Cannot cancel this Casting Plan because Melting Batch <b>{0}</b> "
+					  "already has raw materials charged.<br><br>"
+					  "If the heat was rejected, mark the batch as 'Scrapped'.").format(
+						self.melting_batch
+					),
+					title=_("Plan Locked")
+				)
+		
+		# Also check if any non-cancelled Melting Batch is linked via ppc_casting_plan
+		linked_batches = frappe.db.get_all(
+			"Melting Batch",
+			filters={
+				"ppc_casting_plan": self.name,
+				"docstatus": ["!=", 2]
+			},
+			fields=["name", "status"],
+			limit=1,
+		)
+		
+		if linked_batches:
+			batch = linked_batches[0]
+			if batch.status != "Draft":
+				frappe.throw(
+					_("Cannot cancel this Casting Plan because Melting Batch <b>{0}</b> "
+					  "is linked and has status '{1}'.").format(
+						batch.name, batch.status
+					),
+					title=_("Plan Locked")
+				)
+	
+	def _get_cancel_block_reason(self):
+		"""Return human-readable reason why cancellation is blocked."""
+		reasons = {
+			"Melting": "melting has already started",
+			"Metal Ready": "metal is ready for casting (melting completed)",
+			"Casting": "casting is in progress",
+			"Coils Complete": "coils have already been produced",
+			"Not Produced": "the plan has been marked as Not Produced"
+		}
+		return reasons.get(self.status, f"status is '{self.status}'")
 
 	def on_cancel(self):
 		"""Actions on cancel"""
-		self.db_set("status", "Cancelled")
+		# Status update not needed - document is cancelled
+		pass
+	
+	def adjust_future_plans_for_caster(self):
+		"""
+		Adjust future plans on the same caster when actual_end deviates from planned_end.
+		
+		This is a legacy wrapper for backward compatibility.
+		The actual shifting logic is now in shift_future_plans_for_caster.
+		"""
+		from swynix_mes.swynix_mes.utils.ppc_scheduler import adjust_future_plans_for_caster
+		adjust_future_plans_for_caster(self)
+	
+	def shift_schedule_on_melting_start(self, actual_start_time=None):
+		"""
+		Shift this plan and future plans when melting starts at a different time than planned.
+		
+		Args:
+			actual_start_time: When melting actually started (defaults to now)
+		"""
+		from frappe.utils import now_datetime, get_datetime
+		from swynix_mes.swynix_mes.utils.ppc_scheduler import shift_future_plans_for_caster
+		
+		if not actual_start_time:
+			actual_start_time = now_datetime()
+		else:
+			actual_start_time = get_datetime(actual_start_time)
+		
+		if not self.start_datetime:
+			return
+		
+		old_planned_start = get_datetime(self.start_datetime)
+		
+		# Calculate duration
+		duration = None
+		if self.end_datetime:
+			duration = get_datetime(self.end_datetime) - old_planned_start
+		
+		# Only shift if actual differs from planned
+		if actual_start_time == old_planned_start:
+			return
+		
+		delta_seconds = (actual_start_time - old_planned_start).total_seconds()
+		
+		# Update this plan's timing
+		self.start_datetime = actual_start_time
+		if duration:
+			self.end_datetime = actual_start_time + duration
+		
+		self.melting_start = actual_start_time
+		self.actual_start = actual_start_time
+		self.status = "Melting"
+		
+		self.save(ignore_permissions=True)
+		
+		# Shift future plans
+		shift_future_plans_for_caster(
+			casting_plan_name=self.name,
+			delta_seconds=delta_seconds,
+			from_time=old_planned_start
+		)
 
 
 @frappe.whitelist()
@@ -361,7 +501,7 @@ def get_casting_plans_for_caster(caster, from_date=None, to_date=None):
 	"""
 	filters = {
 		"caster": caster,
-		"status": ["!=", "Cancelled"],
+		"status": ["not in", ["Not Produced"]],  # Show all except Not Produced
 		"docstatus": ["<", 2]
 	}
 
@@ -378,11 +518,16 @@ def get_casting_plans_for_caster(caster, from_date=None, to_date=None):
 		filters=filters,
 		fields=[
 			"name", "cast_no", "plan_type", "plan_date", "shift", "status",
-			"caster", "start_datetime", "end_datetime", "duration_minutes",
+			"caster", "furnace",
+			"start_datetime", "end_datetime", "duration_minutes",
+			"melting_start", "melting_end", "casting_start", "casting_end",
+			"actual_start", "actual_end",
 			"product_item", "alloy", "temper", "planned_width_mm", "planned_gauge_mm",
 			"planned_weight_mt", "final_width_mm", "final_gauge_mm", "final_weight_mt",
 			"customer", "block_color", "charge_mix_recipe",
-			"downtime_type", "downtime_reason"
+			"downtime_type", "downtime_reason",
+			"melting_batch", "mother_coil",
+			"overlap_flag", "overlap_note"
 		],
 		order_by="start_datetime"
 	)
@@ -408,7 +553,7 @@ def get_available_slots(caster, date, min_duration_minutes=60):
 		filters={
 			"caster": caster,
 			"plan_date": date,
-			"status": ["!=", "Cancelled"],
+			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]
 		},
 		fields=["start_datetime", "end_datetime"],
@@ -473,4 +618,3 @@ def get_so_items_for_order(doctype, txt, searchfield, start, page_len, filters):
 		""",
 		(sales_order, f"%{txt}%", f"%{txt}%", start, page_len)
 	)
-

@@ -8,8 +8,10 @@ from frappe.utils.xlsxutils import make_xlsx
 from datetime import timedelta
 
 # Status lists for scheduling logic
-SHIFTABLE_STATUSES = ["Draft", "Planned", "Released to Melting"]
-LOCKED_STATUSES = ["In Process", "Completed"]
+# Plans that can still be shifted (not yet started)
+SHIFTABLE_STATUSES = ["Planned", "Released"]
+# Plans that are locked (already in production or completed)
+LOCKED_STATUSES = ["Melting", "Metal Ready", "Casting", "Coils Complete", "Not Produced"]
 
 
 def ensure_not_in_past(start_dt, label="plan"):
@@ -87,7 +89,7 @@ def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
 	forward by `delta_seconds`. Duration is preserved.
 
 	- We only shift plans whose status is in SHIFTABLE_STATUSES.
-	- We never touch In Process / Completed plans.
+	- We never touch locked plans (Melting, Metal Ready, Casting, Coils Complete, Not Produced).
 	- Both start_datetime and end_datetime are shifted by the same delta
 	  to preserve the original plan duration.
 
@@ -133,7 +135,7 @@ def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
 def ensure_no_overlap_with_locked(caster, start_dt, end_dt, exclude_name=None):
 	"""
 	Ensure the given [start_dt, end_dt] range does NOT overlap any plan on this caster
-	whose status is in LOCKED_STATUSES (In Process / Completed).
+	whose status is in LOCKED_STATUSES.
 
 	Raise frappe.throw if overlap is found.
 	"""
@@ -181,8 +183,7 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 	  the END of the previous plan in sequence.
 	- Duration is preserved = (requested_end - requested_start).
 	- We only shift plans with status in SHIFTABLE_STATUSES and start >= suggested_start.
-	- We never allow overlap with LOCKED_STATUSES (In Process / Completed); if that
-	  would happen, throw an error.
+	- We never allow overlap with LOCKED_STATUSES; if that would happen, throw an error.
 	"""
 	if not (caster and start_datetime and end_datetime):
 		frappe.throw(_("Caster, Start Datetime and End Datetime are required."))
@@ -197,12 +198,12 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 
 	duration = req_end - req_start
 
-	# Fetch all non-cancelled plans on this caster
+	# Fetch all non-cancelled plans on this caster (exclude Not Produced)
 	plans = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
 			"caster": caster,
-			"status": ["!=", "Cancelled"],
+			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2],
 		},
 		fields=["name", "start_datetime", "end_datetime", "status"],
@@ -237,10 +238,6 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 			# Plan hasn't started yet - we CAN shift it
 			if overlapped_index > 0:
 				# There IS a previous plan → snap to end of previous plan
-				# Example:
-				#   P1: 01:00–04:00
-				#   P2: 04:00–10:00
-				#   New: 06:00–07:00  -> becomes 04:00–05:00
 				prev_plan = plans[overlapped_index - 1]
 				suggested_start = prev_plan.end_datetime
 				# But if that previous plan's end is in the past, use now
@@ -248,15 +245,7 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 					suggested_start = now
 			else:
 				# This is the FIRST plan and we are inside it.
-				# We want the NEW PLAN to go BEFORE this existing one,
-				# not after it and not trim it.
-				#
-				# Example:
-				#   P1: 13:00–+1d 13:00
-				#   New: 16:00–17:00
-				# Desired:
-				#   New: 13:00–14:00
-				#   P1: moves to 14:00–+1d 14:00
+				# We want the NEW PLAN to go BEFORE this existing one.
 				suggested_start = overlapped.start_datetime
 
 		suggested_end = suggested_start + duration
@@ -378,7 +367,7 @@ def get_plans_for_day(caster, date):
 		filters={
 			"caster": caster,
 			"plan_date": date,
-			"status": ["!=", "Cancelled"],
+			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]  # Not cancelled
 		},
 		fields=[
@@ -387,6 +376,12 @@ def get_plans_for_day(caster, date):
 			"start_datetime",
 			"end_datetime",
 			"duration_minutes",
+			"melting_start",
+			"melting_end",
+			"casting_start",
+			"casting_end",
+			"actual_start",
+			"actual_end",
 			"product_item",
 			"alloy",
 			"temper",
@@ -402,7 +397,11 @@ def get_plans_for_day(caster, date):
 			"downtime_type",
 			"downtime_reason",
 			"remarks",
-			"furnace"
+			"furnace",
+			"melting_batch",
+			"mother_coil",
+			"overlap_flag",
+			"overlap_note"
 		],
 		order_by="start_datetime asc"
 	)
@@ -426,15 +425,22 @@ def get_plan_for_range(caster, start, end):
 			# Overlap detection: event starts before view ends AND event ends after view starts
 			"start_datetime": ["<", end],
 			"end_datetime": [">", start],
-			"status": ["!=", "Cancelled"],
+			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]  # Not cancelled
 		},
 		fields=[
 			"name",
 			"plan_type",
 			"caster",
+			"furnace",
 			"start_datetime",
 			"end_datetime",
+			"melting_start",
+			"melting_end",
+			"casting_start",
+			"casting_end",
+			"actual_start",
+			"actual_end",
 			"product_item",
 			"alloy",
 			"temper",
@@ -449,7 +455,10 @@ def get_plan_for_range(caster, start, end):
 			"downtime_type",
 			"status",
 			"remarks",
-			"furnace",
+			"melting_batch",
+			"mother_coil",
+			"overlap_flag",
+			"overlap_note"
 		],
 		order_by="start_datetime asc",
 	)
@@ -467,7 +476,7 @@ def get_plans_for_range(caster, from_date, to_date):
 		filters={
 			"caster": caster,
 			"plan_date": ["between", [from_date, to_date]],
-			"status": ["!=", "Cancelled"],
+			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]
 		},
 		fields=[
@@ -477,6 +486,12 @@ def get_plans_for_range(caster, from_date, to_date):
 			"start_datetime",
 			"end_datetime",
 			"duration_minutes",
+			"melting_start",
+			"melting_end",
+			"casting_start",
+			"casting_end",
+			"actual_start",
+			"actual_end",
 			"product_item",
 			"alloy",
 			"temper",
@@ -492,7 +507,11 @@ def get_plans_for_range(caster, from_date, to_date):
 			"downtime_type",
 			"downtime_reason",
 			"remarks",
-			"furnace"
+			"furnace",
+			"melting_batch",
+			"mother_coil",
+			"overlap_flag",
+			"overlap_note"
 		],
 		order_by="start_datetime asc"
 	)
@@ -503,7 +522,7 @@ def create_plan(data):
 	"""
 	Create a PPC Casting Plan from kiosk dialog.
 	- Only shifts not-started future plans (SHIFTABLE_STATUSES).
-	- Never overlaps In Process / Completed plans.
+	- Never overlaps locked plans.
 	"""
 	if isinstance(data, str):
 		import json
@@ -534,7 +553,7 @@ def create_plan(data):
 	# 🚫 No planning in the past
 	ensure_not_in_past(start_dt, label="plan")
 
-	# 1) Ensure we don't overlap any locked (In Process / Completed) plan
+	# 1) Ensure we don't overlap any locked plan
 	ensure_no_overlap_with_locked(data.caster, start_dt, end_dt, exclude_name=None)
 
 	# 2) Compute smart shift window & amount
@@ -635,7 +654,7 @@ def update_plan_times(plan_name, start_datetime, end_datetime):
 	if doc.docstatus == 2:
 		frappe.throw(_("Cannot modify cancelled plan"))
 
-	if doc.status in ["Completed", "In Process"]:
+	if doc.status in LOCKED_STATUSES:
 		frappe.throw(_("Cannot modify plan in status: {0}").format(doc.status))
 
 	# Validate new times
@@ -681,10 +700,26 @@ def cancel_plan(plan_name):
 	if doc.docstatus == 1:
 		doc.cancel()
 	else:
-		doc.status = "Cancelled"
+		doc.status = "Not Produced"
 		doc.save()
 
 	return {"message": "Plan cancelled successfully"}
+
+
+@frappe.whitelist()
+def release_plan(plan_name):
+	"""Release a Planned casting plan for melting."""
+	if not plan_name:
+		frappe.throw(_("Plan name is required"))
+
+	doc = frappe.get_doc("PPC Casting Plan", plan_name)
+
+	if doc.status != "Planned":
+		frappe.throw(_("Only Planned plans can be released. Current status: {0}").format(doc.status))
+
+	doc.db_set("status", "Released", update_modified=True)
+	
+	return {"message": "Plan released for melting", "status": "Released"}
 
 
 @frappe.whitelist()
@@ -706,8 +741,11 @@ def export_plans(caster, start, end, format="xlsx"):
 		"Name",
 		"Plan Type",
 		"Caster",
+		"Status",
 		"Start Datetime",
 		"End Datetime",
+		"Actual Start",
+		"Actual End",
 		"Product Item",
 		"Alloy",
 		"Temper",
@@ -720,7 +758,8 @@ def export_plans(caster, start, end, format="xlsx"):
 		"Final Weight (MT)",
 		"Charge Mix Recipe",
 		"Downtime Type",
-		"Status",
+		"Melting Batch",
+		"Mother Coil",
 		"Remarks",
 	]
 	data = [columns]
@@ -730,8 +769,11 @@ def export_plans(caster, start, end, format="xlsx"):
 			p.get("name"),
 			p.get("plan_type"),
 			p.get("caster") or caster,
+			p.get("status"),
 			str(p.get("start_datetime") or ""),
 			str(p.get("end_datetime") or ""),
+			str(p.get("actual_start") or ""),
+			str(p.get("actual_end") or ""),
 			p.get("product_item"),
 			p.get("alloy"),
 			p.get("temper"),
@@ -744,7 +786,8 @@ def export_plans(caster, start, end, format="xlsx"):
 			p.get("final_weight_mt"),
 			p.get("charge_mix_recipe"),
 			p.get("downtime_type"),
-			p.get("status"),
+			p.get("melting_batch"),
+			p.get("mother_coil"),
 			p.get("remarks"),
 		]
 		data.append(row)
