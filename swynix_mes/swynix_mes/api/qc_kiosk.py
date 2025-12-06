@@ -270,6 +270,66 @@ def create_spectro_sample(melting_batch_name, sample_id=None):
     batch.save()
     frappe.db.commit()
     
+    # Create QC Sample record for QC Kiosk
+    try:
+        # Determine the next sequence number for this batch
+        existing_samples = frappe.get_all(
+            "QC Sample",
+            filters={
+                "source_type": ["in", ["Melting", "Melting Batch"]],
+                "melting_batch": batch.name
+            },
+            fields=["sample_sequence_no"],
+            order_by="sample_sequence_no desc",
+            limit=1
+        )
+        
+        sample_seq = 1
+        if existing_samples and existing_samples[0].sample_sequence_no:
+            sample_seq = existing_samples[0].sample_sequence_no + 1
+        
+        qc_sample = frappe.new_doc("QC Sample")
+        # Use standardized source_type = "Melting"
+        qc_sample.source_type = "Melting"
+        qc_sample.source_doctype = "Melting Batch"
+        qc_sample.source_document = batch.name
+        qc_sample.source_name = batch.name
+        qc_sample.melting_batch = batch.name
+        qc_sample.sample_id = sample_id
+        qc_sample.sample_no = sample_id
+        qc_sample.sample_sequence_no = sample_seq
+        qc_sample.sample_time = sample_row.sample_time
+        qc_sample.alloy = batch.alloy
+        qc_sample.furnace = batch.furnace
+        qc_sample.product_item = batch.product_item
+        qc_sample.temper = batch.temper
+        qc_sample.casting_plan = batch.ppc_casting_plan
+        qc_sample.status = "Pending"
+        qc_sample.overall_result = "Pending"
+        qc_sample.spec_master = accm.name if accm else None
+        
+        # Copy element rows from spectro sample to QC Sample
+        if hasattr(sample_row, 'elements') and sample_row.elements:
+            for el_row in sample_row.elements:
+                qc_el = qc_sample.append("elements", {})
+                qc_el.element = el_row.element
+                qc_el.element_code = getattr(el_row, "element_code", None) or get_element_code(el_row.element)
+                qc_el.condition_type = getattr(el_row, "condition_type", None)
+                qc_el.limit_type = getattr(el_row, "limit_type", None)
+                qc_el.spec_min_pct = getattr(el_row, "spec_min_pct", None)
+                qc_el.spec_max_pct = getattr(el_row, "spec_max_pct", None)
+                qc_el.spec_target_pct = getattr(el_row, "spec_target_pct", None)
+                qc_el.sum_limit_pct = getattr(el_row, "sum_limit_pct", None)
+                qc_el.ratio_value = getattr(el_row, "ratio_value", None)
+                qc_el.sample_pct = getattr(el_row, "sample_pct", 0)
+                qc_el.in_spec = getattr(el_row, "in_spec", 1)
+        
+        qc_sample.insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception as e:
+        # Log error but don't fail the sample creation
+        frappe.log_error(f"Failed to create QC Sample for melting batch {batch.name}: {str(e)}", "QC Sample Creation")
+    
     # Calculate elements count safely
     elements_count = 0
     try:

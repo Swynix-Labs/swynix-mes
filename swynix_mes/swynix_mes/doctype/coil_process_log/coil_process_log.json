@@ -1,0 +1,134 @@
+{
+    "actions": [],
+    "allow_rename": 0,
+    "autoname": "naming_series:",
+    "creation": "2025-12-06 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 0,
+    "engine": "InnoDB",
+    "field_order": [
+        "naming_series",
+        "coil",
+        "casting_run",
+        "event_type",
+        "timestamp",
+        "reference_doctype",
+        "reference_name",
+        "details",
+        "remarks",
+        "user"
+    ],
+    "fields": [
+        {
+            "default": "CPL-.YYYY.-.#####",
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "label": "Naming Series",
+            "options": "CPL-.YYYY.-.#####",
+            "reqd": 1,
+            "hidden": 0
+        },
+        {
+            "fieldname": "coil",
+            "fieldtype": "Link",
+            "label": "Coil",
+            "options": "Mother Coil",
+            "description": "Optional for run-level events (Run Started, Run Stopped). Required for coil-specific events."
+        },
+        {
+            "fieldname": "casting_run",
+            "fieldtype": "Link",
+            "label": "Casting Run",
+            "options": "Casting Run"
+        },
+        {
+            "fieldname": "event_type",
+            "fieldtype": "Select",
+            "label": "Event Type",
+            "options": "CASTING_RUN_STARTED\nCOIL_STARTED\nSAMPLE_TAKEN\nQC_RESULT_RECEIVED\nCORRECTION_APPLIED\nCOIL_FINISHED\nFINAL_COIL_ID_ASSIGNED\nCOIL_MARKED_SCRAP\nCASTING_RUN_STOPPED",
+            "reqd": 1,
+            "in_list_view": 1,
+            "in_standard_filter": 1
+        },
+        {
+            "default": "Now",
+            "fieldname": "timestamp",
+            "fieldtype": "Datetime",
+            "label": "Timestamp",
+            "read_only": 1,
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "reference_doctype",
+            "fieldtype": "Data",
+            "label": "Reference Doctype"
+        },
+        {
+            "fieldname": "reference_name",
+            "fieldtype": "Data",
+            "label": "Reference Name"
+        },
+        {
+            "fieldname": "details",
+            "fieldtype": "Small Text",
+            "label": "Details"
+        },
+        {
+            "fieldname": "remarks",
+            "fieldtype": "Small Text",
+            "label": "Remarks"
+        },
+        {
+            "fieldname": "user",
+            "fieldtype": "Link",
+            "label": "User",
+            "options": "User",
+            "read_only": 1
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "issingle": 0,
+    "istable": 0,
+    "max_attachments": 0,
+    "modified_by": "Administrator",
+    "module": "Swynix MES",
+    "name": "Coil Process Log",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "role": "System Manager",
+            "read": 1,
+            "write": 1,
+            "create": 1,
+            "delete": 1,
+            "print": 1,
+            "email": 1,
+            "export": 1,
+            "share": 1
+        },
+        {
+            "role": "Manufacturing Manager",
+            "read": 1,
+            "write": 1,
+            "create": 1,
+            "delete": 1,
+            "print": 1,
+            "email": 1,
+            "export": 1,
+            "share": 1
+        },
+        {
+            "role": "Manufacturing User",
+            "read": 1,
+            "write": 1,
+            "create": 1,
+            "print": 1,
+            "email": 1
+        }
+    ],
+    "quick_entry": 0,
+    "sort_field": "timestamp",
+    "sort_order": "ASC",
+    "track_changes": 1
+}
+

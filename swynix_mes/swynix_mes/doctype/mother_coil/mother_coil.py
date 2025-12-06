@@ -16,6 +16,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import nowdate, now_datetime, getdate, flt
+from swynix_mes.swynix_mes.utils.coil_logging import log_coil_event
 import re
 
 
@@ -88,13 +89,17 @@ class MotherCoil(Document):
     
     def generate_final_coil_id_if_approved(self):
         """
-        Generate final coil ID only for approved, non-scrap coils.
+        Generate final coil ID only for approved (Within Spec), non-scrap coils.
         
         Format: C{CasterNo}{YY}{MonthCode}{DD}{Seq3}
         Example: C125J10001 = Caster 1, 2025, October, Day 10, Sequence 001
+        
+        Final coil ID is generated immediately upon QC approval, not waiting for
+        Casting Run completion.
         """
+        # Accept both "Approved" and "Within Spec" as valid QC approval
         if (
-            self.qc_status == "Approved" 
+            self.qc_status in ("Approved", "Within Spec")
             and not self.coil_id 
             and not self.is_scrap
             and self.caster 
@@ -125,6 +130,15 @@ class MotherCoil(Document):
                     self.coil_id, 
                     update_modified=False
                 )
+            if not getattr(self.flags, "skip_final_id_log", False):
+                log_coil_event(
+                    coil=self.name,
+                    casting_run=self.casting_run,
+                    event_type="FINAL_COIL_ID_ASSIGNED",
+                    reference_doctype="Mother Coil",
+                    reference_name=self.name,
+                    details=f"{self.temp_coil_id} → {self.coil_id}"
+                )
     
     def update_casting_run_totals(self):
         """Update the totals on the parent Casting Run"""
@@ -152,7 +166,7 @@ class MotherCoil(Document):
         self.coil_id = None  # Clear final coil ID
         self.save()
     
-    def approve_qc(self, comments=None):
+    def approve_qc(self, comments=None, use_within_spec=False):
         """
         Approve the coil QC.
         
@@ -160,8 +174,10 @@ class MotherCoil(Document):
         
         Args:
             comments: Optional QC comments
+            use_within_spec: If True, use "Within Spec" instead of "Approved" 
         """
-        self.qc_status = "Approved"
+        # Both values are acceptable - "Approved" is legacy, "Within Spec" per spec
+        self.qc_status = "Within Spec" if use_within_spec else "Approved"
         if comments:
             self.qc_comments = comments
         self.save()

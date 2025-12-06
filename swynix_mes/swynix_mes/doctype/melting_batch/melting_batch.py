@@ -232,10 +232,16 @@ class MeltingBatch(Document):
 					updates["actual_start"] = updates["melting_start"]
 				updates["status"] = "Melting"
 			
-			# When batch is Transferred (metal ready in holder)
+			# When batch is Ready for Transfer - Casting Plan becomes Metal Ready
+			if self.status == "Ready for Transfer":
+				# If casting has not yet started, set status to Metal Ready
+				if cp.status in ["Melting", "Released", "Planned"]:
+					updates["status"] = "Metal Ready"
+			
+			# When batch is Transferred (metal ready in holder / pouring complete)
 			if self.status == "Transferred":
 				updates["melting_end"] = self.transfer_end_datetime or self.batch_end_datetime or now_datetime()
-				# If casting has not yet started, set status to Metal Ready
+				# Status stays at Metal Ready or Casting (don't override if casting started)
 				if cp.status in ["Melting", "Released", "Planned"]:
 					updates["status"] = "Metal Ready"
 			

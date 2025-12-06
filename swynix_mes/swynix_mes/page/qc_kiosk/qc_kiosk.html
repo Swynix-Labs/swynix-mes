@@ -536,6 +536,59 @@
     color: #0e7490;
 }
 
+.qc-sample-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.qc-main-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+.qc-main-left {
+    flex: 2 1 0;
+    min-width: 0;
+}
+.qc-chem-table-wrapper {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+.qc-main-right {
+    flex: 1 1 0;
+    min-width: 260px;
+}
+.qc-actions-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color, #e5e5e5);
+}
+.qc-comment textarea {
+    width: 100%;
+}
+.qc-actions-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.qc-actions-buttons .btn {
+    min-width: 140px;
+}
+@media (max-width: 1200px) {
+    .qc-main-row {
+        flex-direction: column;
+    }
+    .qc-main-right {
+        min-width: 100%;
+    }
+    .qc-chem-table-wrapper {
+        max-height: unset;
+    }
+}
+
 .qc-all-ok {
     flex: 0 0 350px;
     padding: 12px 16px;
@@ -1029,7 +1082,18 @@
                     <option value="Correction Required">Correction Required</option>
                 </select>
             </div>
+            <div class="qc-filter-item">
+                <label>Source</label>
+                <select id="qc_source_filter" class="qc-input">
+                    <option value="All">All Sources</option>
+                    <option value="Melting">Melting</option>
+                    <option value="Casting">Casting</option>
+                </select>
+            </div>
             <div class="qc-filter-item qc-filter-btn">
+                <button type="button" class="btn btn-sm btn-default" id="qc_btn_export" style="margin-right: 5px;">
+                    <i class="fa fa-download"></i> Export
+                </button>
                 <button type="button" class="btn btn-sm btn-primary" id="qc_btn_refresh">
                     <i class="fa fa-refresh"></i> Refresh
                 </button>
@@ -1086,41 +1150,66 @@
                 <div class="qc-tab-content-wrapper">
                     <!-- Tab Content: Element Analysis -->
                     <div class="qc-tab-content active" id="qc_tab_analysis">
-                        <div class="qc-analysis-layout">
-                            <!-- Left: Element Analysis Table (flex: 1) -->
-                            <div class="qc-spec-section">
-                                <div class="qc-spec-header">
-                                    <span><i class="fa fa-flask"></i> Chemical Composition</span>
-                                    <span class="qc-spec-ref" id="qc_spec_ref"></span>
+                        <div class="qc-sample-details">
+                            <div class="qc-main-row">
+                                <div class="qc-main-left">
+                                    <div class="qc-chem-table-wrapper">
+                                        <div class="qc-spec-section">
+                                            <div class="qc-spec-header">
+                                                <span><i class="fa fa-flask"></i> Chemical Composition</span>
+                                                <span class="qc-spec-ref" id="qc_spec_ref"></span>
+                                            </div>
+                                            <div class="qc-spec-table-wrapper">
+                                                <table class="qc-spec-table" id="qc_spec_table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Element</th>
+                                                            <th class="text-center">Spec (Min-Max)</th>
+                                                            <th class="text-center">Actual %</th>
+                                                            <th class="text-center">Result</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="qc_spec_tbody">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="qc-spec-table-wrapper">
-                                    <table class="qc-spec-table" id="qc_spec_table">
-                                        <thead>
-                                            <tr>
-                                                <th>Element</th>
-                                                <th class="text-center">Spec (Min-Max)</th>
-                                                <th class="text-center">Actual %</th>
-                                                <th class="text-center">Result</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="qc_spec_tbody">
-                                        </tbody>
-                                    </table>
+                                <div class="qc-main-right">
+                                    <div class="qc-deviation-section" id="qc_deviation_section" style="display: none;">
+                                        <div class="qc-deviation-header">
+                                            <i class="fa fa-exclamation-triangle"></i> Specification Deviations
+                                        </div>
+                                        <div class="qc-deviation-list" id="qc_deviation_list">
+                                        </div>
+                                    </div>
+                                    <div class="qc-all-ok" id="qc_all_ok_section" style="display: none;">
+                                        <i class="fa fa-check-circle"></i> All elements within specification
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Right: Deviations Section (fixed width) -->
-                            <div class="qc-deviation-section" id="qc_deviation_section" style="display: none;">
-                                <div class="qc-deviation-header">
-                                    <i class="fa fa-exclamation-triangle"></i> Specification Deviations
+                            <div class="qc-actions-row">
+                                <div class="qc-comment">
+                                    <label for="qc_comment">QC Comment / Instruction to Melting</label>
+                                    <textarea id="qc_comment" class="qc-textarea" rows="2" 
+                                        placeholder="Enter any comments or correction instructions..."></textarea>
                                 </div>
-                                <div class="qc-deviation-list" id="qc_deviation_list">
+                                <div class="qc-actions-buttons">
+                                    <button type="button" class="btn btn-default" id="qc_btn_save">
+                                        <i class="fa fa-save"></i> Save Only
+                                    </button>
+                                    <button type="button" class="btn btn-success" id="qc_btn_approve">
+                                        <i class="fa fa-check"></i> Approve - Within Spec
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="qc_btn_reject">
+                                        <i class="fa fa-times"></i> Reject Sample
+                                    </button>
+                                    <button type="button" class="btn btn-warning" id="qc_btn_correction">
+                                        <i class="fa fa-exclamation-circle"></i> Ask for Correction
+                                    </button>
                                 </div>
-                            </div>
-
-                            <!-- All OK Section -->
-                            <div class="qc-all-ok" id="qc_all_ok_section" style="display: none;">
-                                <i class="fa fa-check-circle"></i> All elements within specification
                             </div>
                         </div>
                     </div>
@@ -1135,7 +1224,7 @@
 
                             <!-- Charge History -->
                             <div class="qc-history-title">
-                                <i class="fa fa-cubes"></i> Charge History (between previous sample and this sample)
+                                <i class="fa fa-cubes"></i> Charge History (before this sample)
                             </div>
                             <table class="qc-history-table" id="qc_charges_table">
                                 <thead>
@@ -1156,7 +1245,7 @@
 
                             <!-- Correction History -->
                             <div class="qc-history-title">
-                                <i class="fa fa-wrench"></i> Correction History (between previous sample and this sample)
+                                <i class="fa fa-wrench"></i> Correction History (before this sample)
                             </div>
                             <table class="qc-history-table" id="qc_corrections_table">
                                 <thead>
@@ -1186,28 +1275,6 @@
                     </div>
                 </div>
 
-                <!-- Section D: Actions - FIXED at bottom, outside tabs -->
-                <div class="qc-action-section">
-                    <div class="qc-comment-area">
-                        <label for="qc_comment">QC Comment / Instruction to Melting</label>
-                        <textarea id="qc_comment" class="qc-textarea" rows="2" 
-                            placeholder="Enter any comments or correction instructions..."></textarea>
-                    </div>
-                    <div class="qc-action-buttons">
-                        <button type="button" class="btn btn-default" id="qc_btn_save">
-                            <i class="fa fa-save"></i> Save Only
-                        </button>
-                        <button type="button" class="btn btn-success" id="qc_btn_approve">
-                            <i class="fa fa-check"></i> Approve - Within Spec
-                        </button>
-                        <button type="button" class="btn btn-danger" id="qc_btn_reject">
-                            <i class="fa fa-times"></i> Reject Sample
-                        </button>
-                        <button type="button" class="btn btn-warning" id="qc_btn_correction">
-                            <i class="fa fa-exclamation-circle"></i> Ask for Correction
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

@@ -24,7 +24,32 @@ class CastingRun(Document):
         self.update_totals_from_coils()
     
     def on_update(self):
+        if self.status == "Completed":
+            self.trigger_final_coil_ids()
         self.sync_to_casting_plan()
+
+    def trigger_final_coil_ids(self):
+        """
+        When run is completed, generate final IDs for all approved coils
+        that were waiting for run completion.
+        """
+        coils = frappe.get_all(
+            "Mother Coil",
+            filters={
+                "casting_run": self.name,
+                "qc_status": "Approved",
+                "is_scrap": 0,
+                "coil_id": ["is", "not set"]
+            },
+            fields=["name"]
+        )
+        
+        for c in coils:
+            doc = frappe.get_doc("Mother Coil", c.name)
+            # This save will trigger on_update in Mother Coil,
+            # which will now pass the 'run_status == Completed' check
+            # and generate the ID.
+            doc.save()
     
     def after_insert(self):
         # Update plan status when run is created

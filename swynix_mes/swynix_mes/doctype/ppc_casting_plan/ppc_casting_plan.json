@@ -1,431 +1,431 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2025-01-01 00:00:00.000000",
- "default_view": "List",
- "doctype": "DocType",
- "editable_grid": 1,
- "engine": "InnoDB",
- "field_order": [
-  "plan_info_section",
-  "plan_type",
-  "cast_no",
-  "status",
-  "column_break_01",
-  "plan_date",
-  "shift",
-  "naming_series",
-  "schedule_section",
-  "caster",
-  "furnace",
-  "column_break_sched",
-  "start_datetime",
-  "end_datetime",
-  "duration_minutes",
-  "planned_duration_minutes",
-  "casting_section",
-  "product_item",
-  "alloy",
-  "temper",
-  "column_break_cast",
-  "customer",
-  "charge_mix_recipe",
-  "block_color",
-  "dimensions_section",
-  "planned_width_mm",
-  "planned_gauge_mm",
-  "planned_weight_mt",
-  "column_break_dim",
-  "final_width_mm",
-  "final_gauge_mm",
-  "final_weight_mt",
-  "actual_times_section",
-  "melting_start",
-  "melting_end",
-  "column_break_actual",
-  "casting_start",
-  "casting_end",
-  "column_break_actual2",
-  "actual_start",
-  "actual_end",
-  "downtime_section",
-  "downtime_type",
-  "column_break_down",
-  "downtime_reason",
-  "linked_section",
-  "melting_batch",
-  "mother_coil",
-  "sales_orders_section",
-  "sales_orders",
-  "overlap_section",
-  "overlap_flag",
-  "overlap_note"
- ],
- "fields": [
-  {
-   "fieldname": "plan_info_section",
-   "fieldtype": "Section Break",
-   "label": "Plan Information"
-  },
-  {
-   "fieldname": "plan_type",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Plan Type",
-   "options": "Casting\nDowntime",
-   "reqd": 1
-  },
-  {
-   "fieldname": "cast_no",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Cast No",
-   "read_only": 1
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "Planned\nReleased\nMelting\nMetal Ready\nCasting\nCoils Complete\nNot Produced",
-   "default": "Planned"
-  },
-  {
-   "fieldname": "column_break_01",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "plan_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Plan Date"
-  },
-  {
-   "fieldname": "shift",
-   "fieldtype": "Select",
-   "label": "Shift",
-   "options": "\nA\nB\nC"
-  },
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Naming Series",
-   "options": "PPC-.YYYY.-",
-   "hidden": 1
-  },
-  {
-   "fieldname": "schedule_section",
-   "fieldtype": "Section Break",
-   "label": "Schedule"
-  },
-  {
-   "fieldname": "caster",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Caster",
-   "options": "Workstation",
-   "reqd": 1
-  },
-  {
-   "fieldname": "furnace",
-   "fieldtype": "Link",
-   "label": "Furnace",
-   "options": "Workstation"
-  },
-  {
-   "fieldname": "column_break_sched",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "start_datetime",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Start Datetime",
-   "reqd": 1
-  },
-  {
-   "fieldname": "end_datetime",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "End Datetime",
-   "reqd": 1
-  },
-  {
-   "fieldname": "duration_minutes",
-   "fieldtype": "Int",
-   "label": "Duration (Minutes)",
-   "read_only": 1
-  },
-  {
-   "fieldname": "planned_duration_minutes",
-   "fieldtype": "Float",
-   "label": "Planned Duration (Minutes)",
-   "read_only": 1,
-   "description": "Original planned duration for rescheduling"
-  },
-  {
-   "fieldname": "casting_section",
-   "fieldtype": "Section Break",
-   "label": "Casting Details",
-   "depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "product_item",
-   "fieldtype": "Link",
-   "label": "Product Item",
-   "options": "Item",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "alloy",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Alloy",
-   "options": "Item",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "temper",
-   "fieldtype": "Link",
-   "label": "Temper",
-   "options": "Temper",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "column_break_cast",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer"
-  },
-  {
-   "fieldname": "charge_mix_recipe",
-   "fieldtype": "Link",
-   "label": "Charge Mix Recipe",
-   "options": "Charge Mix Recipe"
-  },
-  {
-   "fieldname": "block_color",
-   "fieldtype": "Color",
-   "label": "Block Color"
-  },
-  {
-   "fieldname": "dimensions_section",
-   "fieldtype": "Section Break",
-   "label": "Dimensions",
-   "depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "planned_width_mm",
-   "fieldtype": "Float",
-   "label": "Planned Width (mm)",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "planned_gauge_mm",
-   "fieldtype": "Float",
-   "label": "Planned Gauge (mm)",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "planned_weight_mt",
-   "fieldtype": "Float",
-   "label": "Planned Weight (MT)",
-   "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
-  },
-  {
-   "fieldname": "column_break_dim",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "final_width_mm",
-   "fieldtype": "Float",
-   "label": "Final Width (mm)"
-  },
-  {
-   "fieldname": "final_gauge_mm",
-   "fieldtype": "Float",
-   "label": "Final Gauge (mm)"
-  },
-  {
-   "fieldname": "final_weight_mt",
-   "fieldtype": "Float",
-   "label": "Final Weight (MT)"
-  },
-  {
-   "fieldname": "actual_times_section",
-   "fieldtype": "Section Break",
-   "label": "Actual Times",
-   "collapsible": 1
-  },
-  {
-   "fieldname": "melting_start",
-   "fieldtype": "Datetime",
-   "label": "Melting Start"
-  },
-  {
-   "fieldname": "melting_end",
-   "fieldtype": "Datetime",
-   "label": "Melting End"
-  },
-  {
-   "fieldname": "column_break_actual",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "casting_start",
-   "fieldtype": "Datetime",
-   "label": "Casting Start"
-  },
-  {
-   "fieldname": "casting_end",
-   "fieldtype": "Datetime",
-   "label": "Casting End"
-  },
-  {
-   "fieldname": "column_break_actual2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "actual_start",
-   "fieldtype": "Datetime",
-   "label": "Actual Start"
-  },
-  {
-   "fieldname": "actual_end",
-   "fieldtype": "Datetime",
-   "label": "Actual End"
-  },
-  {
-   "fieldname": "downtime_section",
-   "fieldtype": "Section Break",
-   "label": "Downtime Details",
-   "depends_on": "eval:doc.plan_type=='Downtime'"
-  },
-  {
-   "fieldname": "downtime_type",
-   "fieldtype": "Select",
-   "label": "Downtime Type",
-   "options": "\nPlanned Maintenance\nUnplanned Maintenance\nBreakdown\nSetup\nOther",
-   "mandatory_depends_on": "eval:doc.plan_type=='Downtime'"
-  },
-  {
-   "fieldname": "column_break_down",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "downtime_reason",
-   "fieldtype": "Small Text",
-   "label": "Downtime Reason"
-  },
-  {
-   "fieldname": "linked_section",
-   "fieldtype": "Section Break",
-   "label": "Linked Documents",
-   "collapsible": 1
-  },
-  {
-   "fieldname": "melting_batch",
-   "fieldtype": "Link",
-   "label": "Melting Batch",
-   "options": "Melting Batch"
-  },
-  {
-   "fieldname": "mother_coil",
-   "fieldtype": "Link",
-   "label": "Mother Coil",
-   "options": "Mother Coil"
-  },
-  {
-   "fieldname": "sales_orders_section",
-   "fieldtype": "Section Break",
-   "label": "Sales Orders",
-   "collapsible": 1
-  },
-  {
-   "fieldname": "sales_orders",
-   "fieldtype": "Table",
-   "label": "Sales Orders",
-   "options": "PPC Casting Plan SO"
-  },
-  {
-   "fieldname": "overlap_section",
-   "fieldtype": "Section Break",
-   "label": "Overlap Information",
-   "collapsible": 1,
-   "hidden": 1
-  },
-  {
-   "fieldname": "overlap_flag",
-   "fieldtype": "Check",
-   "label": "Has Overlap",
-   "read_only": 1
-  },
-  {
-   "fieldname": "overlap_note",
-   "fieldtype": "Small Text",
-   "label": "Overlap Note",
-   "read_only": 1
-  }
- ],
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-12-05 15:00:00.000000",
- "modified_by": "Administrator",
- "module": "Swynix MES",
- "name": "PPC Casting Plan",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 0,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "MES Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 0,
-   "delete": 0,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "MES User",
-   "share": 0,
-   "write": 0
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [],
- "title_field": "cast_no",
- "track_changes": 1
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "naming_series:",
+    "creation": "2025-01-01 00:00:00.000000",
+    "default_view": "List",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "plan_info_section",
+        "plan_type",
+        "cast_no",
+        "status",
+        "column_break_01",
+        "plan_date",
+        "shift",
+        "naming_series",
+        "schedule_section",
+        "caster",
+        "furnace",
+        "column_break_sched",
+        "start_datetime",
+        "end_datetime",
+        "duration_minutes",
+        "planned_duration_minutes",
+        "casting_section",
+        "product_item",
+        "alloy",
+        "temper",
+        "column_break_cast",
+        "customer",
+        "charge_mix_recipe",
+        "block_color",
+        "dimensions_section",
+        "planned_width_mm",
+        "planned_gauge_mm",
+        "planned_weight_mt",
+        "column_break_dim",
+        "final_width_mm",
+        "final_gauge_mm",
+        "final_weight_mt",
+        "actual_times_section",
+        "melting_start",
+        "melting_end",
+        "column_break_actual",
+        "casting_start",
+        "casting_end",
+        "column_break_actual2",
+        "actual_start",
+        "actual_end",
+        "downtime_section",
+        "downtime_type",
+        "column_break_down",
+        "downtime_reason",
+        "linked_section",
+        "melting_batch",
+        "mother_coil",
+        "sales_orders_section",
+        "sales_orders",
+        "overlap_section",
+        "overlap_flag",
+        "overlap_note"
+    ],
+    "fields": [
+        {
+            "fieldname": "plan_info_section",
+            "fieldtype": "Section Break",
+            "label": "Plan Information"
+        },
+        {
+            "fieldname": "plan_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Plan Type",
+            "options": "Casting\nDowntime",
+            "reqd": 1
+        },
+        {
+            "fieldname": "cast_no",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Cast No",
+            "read_only": 1
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Status",
+            "options": "Planned\nReleased\nMelting\nMetal Ready\nCasting\nCoils Complete\nNot Produced",
+            "default": "Planned"
+        },
+        {
+            "fieldname": "column_break_01",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "plan_date",
+            "fieldtype": "Date",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Plan Date"
+        },
+        {
+            "fieldname": "shift",
+            "fieldtype": "Select",
+            "label": "Shift",
+            "options": "\nA\nB\nC"
+        },
+        {
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "label": "Naming Series",
+            "options": "PPC-.YYYY.-",
+            "hidden": 1
+        },
+        {
+            "fieldname": "schedule_section",
+            "fieldtype": "Section Break",
+            "label": "Schedule"
+        },
+        {
+            "fieldname": "caster",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Caster",
+            "options": "Workstation",
+            "reqd": 1
+        },
+        {
+            "fieldname": "furnace",
+            "fieldtype": "Link",
+            "label": "Furnace",
+            "options": "Workstation"
+        },
+        {
+            "fieldname": "column_break_sched",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "start_datetime",
+            "fieldtype": "Datetime",
+            "in_list_view": 1,
+            "label": "Start Datetime",
+            "reqd": 1
+        },
+        {
+            "fieldname": "end_datetime",
+            "fieldtype": "Datetime",
+            "in_list_view": 1,
+            "label": "End Datetime",
+            "reqd": 1
+        },
+        {
+            "fieldname": "duration_minutes",
+            "fieldtype": "Int",
+            "label": "Duration (Minutes)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "planned_duration_minutes",
+            "fieldtype": "Float",
+            "label": "Planned Duration (Minutes)",
+            "read_only": 1,
+            "description": "Original planned duration for rescheduling"
+        },
+        {
+            "fieldname": "casting_section",
+            "fieldtype": "Section Break",
+            "label": "Casting Details",
+            "depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "product_item",
+            "fieldtype": "Link",
+            "label": "Product Item",
+            "options": "Item",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "alloy",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Alloy",
+            "options": "Item",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "temper",
+            "fieldtype": "Link",
+            "label": "Temper",
+            "options": "Temper",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "column_break_cast",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "customer",
+            "fieldtype": "Link",
+            "label": "Customer",
+            "options": "Customer"
+        },
+        {
+            "fieldname": "charge_mix_recipe",
+            "fieldtype": "Link",
+            "label": "Charge Mix Ratio",
+            "options": "Charge Mix Ratio"
+        },
+        {
+            "fieldname": "block_color",
+            "fieldtype": "Color",
+            "label": "Block Color"
+        },
+        {
+            "fieldname": "dimensions_section",
+            "fieldtype": "Section Break",
+            "label": "Dimensions",
+            "depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "planned_width_mm",
+            "fieldtype": "Float",
+            "label": "Planned Width (mm)",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "planned_gauge_mm",
+            "fieldtype": "Float",
+            "label": "Planned Gauge (mm)",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "planned_weight_mt",
+            "fieldtype": "Float",
+            "label": "Planned Weight (MT)",
+            "mandatory_depends_on": "eval:doc.plan_type=='Casting'"
+        },
+        {
+            "fieldname": "column_break_dim",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "final_width_mm",
+            "fieldtype": "Float",
+            "label": "Final Width (mm)"
+        },
+        {
+            "fieldname": "final_gauge_mm",
+            "fieldtype": "Float",
+            "label": "Final Gauge (mm)"
+        },
+        {
+            "fieldname": "final_weight_mt",
+            "fieldtype": "Float",
+            "label": "Final Weight (MT)"
+        },
+        {
+            "fieldname": "actual_times_section",
+            "fieldtype": "Section Break",
+            "label": "Actual Times",
+            "collapsible": 1
+        },
+        {
+            "fieldname": "melting_start",
+            "fieldtype": "Datetime",
+            "label": "Melting Start"
+        },
+        {
+            "fieldname": "melting_end",
+            "fieldtype": "Datetime",
+            "label": "Melting End"
+        },
+        {
+            "fieldname": "column_break_actual",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "casting_start",
+            "fieldtype": "Datetime",
+            "label": "Casting Start"
+        },
+        {
+            "fieldname": "casting_end",
+            "fieldtype": "Datetime",
+            "label": "Casting End"
+        },
+        {
+            "fieldname": "column_break_actual2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "actual_start",
+            "fieldtype": "Datetime",
+            "label": "Actual Start"
+        },
+        {
+            "fieldname": "actual_end",
+            "fieldtype": "Datetime",
+            "label": "Actual End"
+        },
+        {
+            "fieldname": "downtime_section",
+            "fieldtype": "Section Break",
+            "label": "Downtime Details",
+            "depends_on": "eval:doc.plan_type=='Downtime'"
+        },
+        {
+            "fieldname": "downtime_type",
+            "fieldtype": "Select",
+            "label": "Downtime Type",
+            "options": "\nPlanned Maintenance\nUnplanned Maintenance\nBreakdown\nSetup\nOther",
+            "mandatory_depends_on": "eval:doc.plan_type=='Downtime'"
+        },
+        {
+            "fieldname": "column_break_down",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "downtime_reason",
+            "fieldtype": "Small Text",
+            "label": "Downtime Reason"
+        },
+        {
+            "fieldname": "linked_section",
+            "fieldtype": "Section Break",
+            "label": "Linked Documents",
+            "collapsible": 1
+        },
+        {
+            "fieldname": "melting_batch",
+            "fieldtype": "Link",
+            "label": "Melting Batch",
+            "options": "Melting Batch"
+        },
+        {
+            "fieldname": "mother_coil",
+            "fieldtype": "Link",
+            "label": "Mother Coil",
+            "options": "Mother Coil"
+        },
+        {
+            "fieldname": "sales_orders_section",
+            "fieldtype": "Section Break",
+            "label": "Sales Orders",
+            "collapsible": 1
+        },
+        {
+            "fieldname": "sales_orders",
+            "fieldtype": "Table",
+            "label": "Sales Orders",
+            "options": "PPC Casting Plan SO"
+        },
+        {
+            "fieldname": "overlap_section",
+            "fieldtype": "Section Break",
+            "label": "Overlap Information",
+            "collapsible": 1,
+            "hidden": 1
+        },
+        {
+            "fieldname": "overlap_flag",
+            "fieldtype": "Check",
+            "label": "Has Overlap",
+            "read_only": 1
+        },
+        {
+            "fieldname": "overlap_note",
+            "fieldtype": "Small Text",
+            "label": "Overlap Note",
+            "read_only": 1
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2025-12-05 15:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Swynix MES",
+    "name": "PPC Casting Plan",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 0,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "MES Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 0,
+            "delete": 0,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "MES User",
+            "share": 0,
+            "write": 0
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "title_field": "cast_no",
+    "track_changes": 1
 }

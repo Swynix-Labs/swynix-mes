@@ -16,8 +16,7 @@
 
 // Global state
 let qc_state = {
-	current_batch: null,
-	current_sample_id: null,
+	current_sample_name: null,
 	current_sample_data: null,
 	samples: []
 };
@@ -55,11 +54,8 @@ frappe.pages['qc-kiosk'].on_page_load = function(wrapper) {
 frappe.pages['qc-kiosk'].on_page_show = function() {
 	// Check for query params and auto-load
 	let params = get_query_params();
-	if (params.batch && params.sample) {
-		// Auto-select the specified sample
-		setTimeout(() => {
-			select_sample(params.batch, params.sample);
-		}, 500);
+	if (params.sample) {
+		qc_state.current_sample_name = params.sample;
 	}
 	
 	// Refresh samples list
@@ -80,10 +76,8 @@ function init_qc_kiosk() {
 
 	// Check URL params
 	let params = get_query_params();
-	if (params.batch) {
-		// Set batch filter if specified
-		qc_state.current_batch = params.batch;
-		qc_state.current_sample_id = params.sample || null;
+	if (params.sample) {
+		qc_state.current_sample_name = params.sample;
 	}
 
 	// Initial load
@@ -96,16 +90,20 @@ function bind_events() {
 		load_samples();
 	});
 
+	// Export button
+	$('#qc_btn_export').on('click', function() {
+		export_samples();
+	});
+
 	// Filter changes
-	$('#qc_from_date, #qc_to_date, #qc_alloy_filter, #qc_status_filter').on('change', function() {
+	$('#qc_from_date, #qc_to_date, #qc_alloy_filter, #qc_status_filter, #qc_source_filter').on('change', function() {
 		load_samples();
 	});
 
 	// Sample selection
 	$(document).on('click', '.qc-sample-item', function() {
-		let batch = $(this).data('batch');
-		let sample_id = $(this).data('sample');
-		select_sample(batch, sample_id);
+		let sample_name = $(this).data('sample-name');
+		select_sample(sample_name);
 	});
 
 	// Tab switching
@@ -163,8 +161,7 @@ function load_sample_history() {
 		return;
 	}
 	
-	let batch = qc_state.current_sample_data.batch_info.name;
-	let sample_id = qc_state.current_sample_data.sample_info.sample_id;
+	let sample_name = qc_state.current_sample_data.sample_info.name;
 	
 	$('#qc_history_window').html('<i class="fa fa-spinner fa-spin"></i> Loading history...');
 	$('#qc_charges_tbody').empty();
@@ -173,7 +170,7 @@ function load_sample_history() {
 	
 	frappe.call({
 		method: "swynix_mes.swynix_mes.page.qc_kiosk.qc_kiosk.get_qc_history_for_sample",
-		args: { batch: batch, sample_id: sample_id },
+		args: { sample_name: sample_name },
 		callback: function(r) {
 			if (r.message) {
 				render_history(r.message);
@@ -296,6 +293,19 @@ function load_filter_options() {
 	});
 }
 
+function export_samples() {
+	let filters = {
+		from_date: $('#qc_from_date').val(),
+		to_date: $('#qc_to_date').val(),
+		alloy: $('#qc_alloy_filter').val(),
+		status: $('#qc_status_filter').val(),
+		source_type: $('#qc_source_filter').val()
+	};
+
+	let url = `/api/method/swynix_mes.swynix_mes.page.qc_kiosk.qc_kiosk.export_samples_to_excel?filters=${encodeURIComponent(JSON.stringify(filters))}`;
+	window.open(url);
+}
+
 // ==================== SAMPLE LOADING ====================
 
 function load_samples() {
@@ -303,13 +313,9 @@ function load_samples() {
 		from_date: $('#qc_from_date').val(),
 		to_date: $('#qc_to_date').val(),
 		alloy: $('#qc_alloy_filter').val(),
-		status: $('#qc_status_filter').val()
+		status: $('#qc_status_filter').val(),
+		source_type: $('#qc_source_filter').val()
 	};
-
-	// If batch was specified in URL, add it to filters
-	if (qc_state.current_batch && !filters.batch) {
-		// Don't filter by batch if user changed filters
-	}
 
 	$('#qc_sample_list').html(
 		'<div class="qc-loading"><i class="fa fa-spinner fa-spin"></i> Loading samples...</div>'
@@ -323,17 +329,15 @@ function load_samples() {
 			render_sample_list(qc_state.samples);
 
 			// Auto-select if specified
-			if (qc_state.current_batch && qc_state.current_sample_id) {
-				let found = qc_state.samples.find(s => 
-					s.melting_batch === qc_state.current_batch && 
-					s.sample_id === qc_state.current_sample_id
-				);
+			if (qc_state.current_sample_name) {
+				let found = qc_state.samples.find(s => s.name === qc_state.current_sample_name);
 				if (found) {
-					select_sample(qc_state.current_batch, qc_state.current_sample_id);
+					select_sample(found.name);
 				}
 				// Clear auto-select after first load
-				qc_state.current_batch = null;
-				qc_state.current_sample_id = null;
+				qc_state.current_sample_name = null;
+			} else if (qc_state.samples.length) {
+				select_sample(qc_state.samples[0].name);
 			}
 		}
 	});
@@ -351,6 +355,8 @@ function render_sample_list(samples) {
 				'<div style="font-size: 12px; margin-top: 4px;">Try adjusting your filters</div>' +
 			'</div>'
 		);
+		// Clear sample details when no samples found
+		clear_sample_details();
 		return;
 	}
 
@@ -360,19 +366,36 @@ function render_sample_list(samples) {
 		let isActive = (qc_state.current_sample_data && 
 			qc_state.current_sample_data.sample_info && 
 			qc_state.current_sample_data.sample_info.name === s.name) ? ' active' : '';
+		let sourceDoc = s.source_document || s.melting_batch || s.casting_run || s.mother_coil || '-';
+		let sourceLabel = s.source_type ? `${s.source_type}` : 'Source';
+		
+		let sourceIcon = '<i class="fa fa-file-o"></i>';
+		if (s.source_type === 'Melting') {
+			sourceIcon = '<i class="fa fa-fire" style="color: #ea580c;"></i>'; // Orange
+		} else if (s.source_type === 'Casting') {
+			sourceIcon = '<i class="fa fa-industry" style="color: #0284c7;"></i>'; // Sky Blue
+		}
+
+		let metaParts = [
+			s.alloy || '-',
+			s.furnace || '-',
+			s.caster || ''
+		].filter(part => part && part !== '').join(' | ');
 
 		html += `
-			<div class="qc-sample-item${isActive}" data-batch="${s.melting_batch}" data-sample="${s.sample_id}">
+			<div class="qc-sample-item${isActive}" data-sample-name="${s.name}">
 				<div class="qc-sample-row">
 					<div>
-						<div class="qc-sample-id">${frappe.utils.escape_html(s.sample_id)}</div>
-						<div class="qc-sample-batch">${frappe.utils.escape_html(s.batch_id || s.melting_batch)}</div>
+						<div class="qc-sample-id">${frappe.utils.escape_html(s.sample_id || '')}${s.sample_sequence_no ? ' #' + s.sample_sequence_no : ''}</div>
+						<div class="qc-sample-batch" style="display: flex; align-items: center; gap: 4px;">
+							${sourceIcon} 
+							<span>${frappe.utils.escape_html(sourceLabel)}: ${frappe.utils.escape_html(sourceDoc)}</span>
+						</div>
 					</div>
 					<span class="qc-sample-badge ${badgeClass}">${frappe.utils.escape_html(s.status)}</span>
 				</div>
 				<div class="qc-sample-meta">
-					${frappe.utils.escape_html(s.alloy || '-')} | 
-					${frappe.utils.escape_html(s.furnace || '-')} | 
+					${frappe.utils.escape_html(metaParts || '-')} | 
 					${s.sample_time ? frappe.datetime.str_to_user(s.sample_time).split(' ')[1] || '' : '-'}
 				</div>
 			</div>
@@ -400,10 +423,24 @@ function get_status_badge_class(status) {
 
 // ==================== SAMPLE DETAIL ====================
 
-function select_sample(batch, sample_id) {
+/**
+ * Clear sample details panel when no samples or changing filters
+ */
+function clear_sample_details() {
+	qc_state.current_sample_data = null;
+	$('#qc_detail_content').hide();
+	$('#qc_empty_state').show();
+	$('#qc_detail_header').html('');
+	$('#qc_spec_tbody').empty();
+	$('#qc_deviation_section').hide();
+	$('#qc_all_ok_section').hide();
+	$('#qc_comment').val('');
+}
+
+function select_sample(sample_name) {
 	// Highlight in list
 	$('.qc-sample-item').removeClass('active');
-	$(`.qc-sample-item[data-batch="${batch}"][data-sample="${sample_id}"]`).addClass('active');
+	$(`.qc-sample-item[data-sample-name="${sample_name}"]`).addClass('active');
 
 	// Show loading
 	$('#qc_empty_state').hide();
@@ -414,7 +451,7 @@ function select_sample(batch, sample_id) {
 
 	frappe.call({
 		method: "swynix_mes.swynix_mes.page.qc_kiosk.qc_kiosk.get_sample_details",
-		args: { batch: batch, sample_id: sample_id },
+		args: { sample_name: sample_name },
 		callback: function(r) {
 			if (r.message) {
 				qc_state.current_sample_data = r.message;
@@ -439,16 +476,23 @@ function render_sample_detail(data) {
 	// Render header
 	let overallClass = overall === 'OK' ? 'qc-overall-ok' : 
 		(overall === 'Out of Spec' ? 'qc-overall-out' : 'qc-overall-pending');
+	let sourceLabel = batch.source_type || 'Source';
+	let sourceLink = '';
+	if (batch.source_type === 'Melting Batch') {
+		sourceLink = `/app/melting-batch/${batch.name}`;
+	} else if (batch.source_type === 'Casting Run') {
+		sourceLink = `/app/casting-run/${batch.name}`;
+	} else if (batch.source_type === 'Coil') {
+		sourceLink = `/app/mother-coil/${batch.name}`;
+	}
+	let sourceValue = frappe.utils.escape_html(batch.batch_id || batch.name || '-');
+	let sourceDisplay = sourceLink ? `<a href="${sourceLink}" target="_blank">${sourceValue}</a>` : sourceValue;
 
 	let headerHtml = `
 		<div class="qc-header-grid">
 			<div class="qc-header-item">
-				<span class="qc-header-label">Batch</span>
-				<span class="qc-header-value">
-					<a href="/app/melting-batch/${batch.name}" target="_blank">
-						${frappe.utils.escape_html(batch.batch_id || batch.name)}
-					</a>
-				</span>
+				<span class="qc-header-label">${frappe.utils.escape_html(sourceLabel)}</span>
+				<span class="qc-header-value">${sourceDisplay}</span>
 			</div>
 			<div class="qc-header-item">
 				<span class="qc-header-label">Alloy</span>
@@ -463,8 +507,12 @@ function render_sample_detail(data) {
 				<span class="qc-header-value">${frappe.utils.escape_html(batch.furnace || '-')}</span>
 			</div>
 			<div class="qc-header-item">
+				<span class="qc-header-label">Caster</span>
+				<span class="qc-header-value">${frappe.utils.escape_html(batch.caster || '-')}</span>
+			</div>
+			<div class="qc-header-item">
 				<span class="qc-header-label">Sample</span>
-				<span class="qc-header-value">${frappe.utils.escape_html(sample.sample_id)} @ ${sample.sample_time ? frappe.datetime.str_to_user(sample.sample_time) : '-'}</span>
+				<span class="qc-header-value">${frappe.utils.escape_html(sample.sample_id)} ${batch.sample_sequence_no ? '(' + batch.sample_sequence_no + ')' : ''} @ ${sample.sample_time ? frappe.datetime.str_to_user(sample.sample_time) : '-'}</span>
 			</div>
 			<div class="qc-header-item">
 				<span class="qc-header-label">Status</span>
@@ -664,16 +712,14 @@ function save_sample(action) {
 		return;
 	}
 
-	let batch = qc_state.current_sample_data.batch_info.name;
-	let sample_id = qc_state.current_sample_data.sample_info.sample_id;
+	let sample_name = qc_state.current_sample_data.sample_info.name;
 	let readings = gather_readings();
 	let comment = $('#qc_comment').val();
 
 	frappe.call({
 		method: "swynix_mes.swynix_mes.page.qc_kiosk.qc_kiosk.update_sample_result",
 		args: {
-			batch: batch,
-			sample_id: sample_id,
+			sample_name: sample_name,
 			readings: readings,
 			action: action,
 			comment: comment
@@ -691,7 +737,7 @@ function save_sample(action) {
 
 				// Refresh
 				load_samples();
-				select_sample(batch, sample_id);
+				select_sample(sample_name);
 			}
 		}
 	});

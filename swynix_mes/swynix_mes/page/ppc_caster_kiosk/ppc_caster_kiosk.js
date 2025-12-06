@@ -4,7 +4,7 @@
 let ppc_calendar = null;
 let current_caster = null;
 
-frappe.pages['ppc-caster-kiosk'].on_page_load = function(wrapper) {
+frappe.pages['ppc-caster-kiosk'].on_page_load = function (wrapper) {
 	let page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: 'PPC Caster Kiosk',
@@ -23,7 +23,7 @@ frappe.pages['ppc-caster-kiosk'].on_page_load = function(wrapper) {
 	});
 };
 
-frappe.pages['ppc-caster-kiosk'].on_page_show = function() {
+frappe.pages['ppc-caster-kiosk'].on_page_show = function () {
 	// Refresh data when page is shown
 	if (ppc_calendar) {
 		refresh_events();
@@ -58,13 +58,13 @@ function load_fullcalendar() {
 
 function init_header_controls() {
 	// Caster dropdown change -> reload events
-	$(document).on('change', '#caster_select', function() {
+	$(document).on('change', '#caster_select', function () {
 		current_caster = $(this).val();
 		refresh_events();
 	});
 
 	// View selection
-	$(document).on('change', '#view_select', function() {
+	$(document).on('change', '#view_select', function () {
 		if (!ppc_calendar) return;
 		let view = $(this).val();
 		ppc_calendar.changeView(view);
@@ -72,21 +72,21 @@ function init_header_controls() {
 	});
 
 	// Date navigation
-	$(document).on('click', '#btn_prev', function() {
+	$(document).on('click', '#btn_prev', function () {
 		if (ppc_calendar) {
 			ppc_calendar.prev();
 			refresh_events();
 		}
 	});
 
-	$(document).on('click', '#btn_today', function() {
+	$(document).on('click', '#btn_today', function () {
 		if (ppc_calendar) {
 			ppc_calendar.today();
 			refresh_events();
 		}
 	});
 
-	$(document).on('click', '#btn_next', function() {
+	$(document).on('click', '#btn_next', function () {
 		if (ppc_calendar) {
 			ppc_calendar.next();
 			refresh_events();
@@ -94,7 +94,7 @@ function init_header_controls() {
 	});
 
 	// Create Plan button
-	$(document).on('click', '#btn_create_plan', function() {
+	$(document).on('click', '#btn_create_plan', function () {
 		if (!ppc_calendar) {
 			frappe.msgprint(__("Calendar not ready."));
 			return;
@@ -103,13 +103,13 @@ function init_header_controls() {
 	});
 
 	// Export Excel option
-	$(document).on('click', '#export_excel', function(e) {
+	$(document).on('click', '#export_excel', function (e) {
 		e.preventDefault();
 		export_plans('xlsx');
 	});
 
 	// Export CSV option
-	$(document).on('click', '#export_csv', function(e) {
+	$(document).on('click', '#export_csv', function (e) {
 		e.preventDefault();
 		export_plans('csv');
 	});
@@ -142,14 +142,14 @@ function load_casters() {
  */
 function getStatusColor(status) {
 	switch (status) {
-		case "Planned":        return "#9e9e9e"; // grey
-		case "Released":       return "#607d8b"; // blue-grey
-		case "Melting":        return "#2196f3"; // blue
-		case "Metal Ready":    return "#00bcd4"; // teal
-		case "Casting":        return "#ff9800"; // orange
+		case "Planned": return "#9e9e9e"; // grey
+		case "Released": return "#607d8b"; // blue-grey
+		case "Melting": return "#2196f3"; // blue
+		case "Metal Ready": return "#00bcd4"; // teal
+		case "Casting": return "#ff9800"; // orange
 		case "Coils Complete": return "#4caf50"; // green
-		case "Not Produced":   return "#f44336"; // red
-		default:               return "#9e9e9e"; // grey
+		case "Not Produced": return "#f44336"; // red
+		default: return "#9e9e9e"; // grey
 	}
 }
 
@@ -171,14 +171,14 @@ function formatTime(datetime) {
  */
 function buildTooltip(p) {
 	let lines = [];
-	
+
 	// First line: product_item (alloy / temper) | weight MT
 	let line1 = `${p.product_item || 'N/A'} (${p.alloy || '-'} / ${p.temper || '-'})`;
 	if (p.planned_weight_mt) {
 		line1 += ` | ${p.planned_weight_mt} MT`;
 	}
 	lines.push(line1);
-	
+
 	// Second line: Melt timing if available
 	if (p.melting_start || p.melting_end) {
 		let meltLine = 'Melt: ';
@@ -187,7 +187,7 @@ function buildTooltip(p) {
 		meltLine += formatTime(p.melting_end) || '--:--';
 		lines.push(meltLine);
 	}
-	
+
 	// Third line: Cast timing if available
 	if (p.casting_start || p.casting_end) {
 		let castLine = 'Cast: ';
@@ -196,25 +196,25 @@ function buildTooltip(p) {
 		castLine += formatTime(p.casting_end) || '--:--';
 		lines.push(castLine);
 	}
-	
+
 	// Status
 	lines.push(`Status: ${p.status || 'Unknown'}`);
-	
+
 	// Furnace if available
 	if (p.furnace) {
 		lines.push(`Furnace: ${p.furnace}`);
 	}
-	
+
 	// Customer if available
 	if (p.customer) {
 		lines.push(`Customer: ${p.customer}`);
 	}
-	
+
 	// Overlap warning if flagged
 	if (p.overlap_flag) {
 		lines.push(`⚠️ Schedule Conflict`);
 	}
-	
+
 	return lines.join('\n');
 }
 
@@ -235,31 +235,31 @@ function init_calendar() {
 		dayHeaderFormat: { weekday: 'short', month: 'numeric', day: 'numeric' },
 
 		// Do nothing on empty-slot click
-		dateClick: function(info) {
+		dateClick: function (info) {
 			return;
 		},
 
 		// When user clicks existing event -> open doc
-		eventClick: function(info) {
+		eventClick: function (info) {
 			if (info.event.extendedProps && info.event.extendedProps.docname) {
 				frappe.set_route('Form', 'PPC Casting Plan', info.event.extendedProps.docname);
 			}
 		},
 
 		// Fetch events dynamically
-		events: function(fetchInfo, successCallback, failureCallback) {
+		events: function (fetchInfo, successCallback, failureCallback) {
 			fetch_events(fetchInfo.startStr, fetchInfo.endStr)
 				.then(events => successCallback(events))
 				.catch(err => failureCallback(err));
 		},
-		
+
 		// Event rendering - add tooltip
-		eventDidMount: function(info) {
+		eventDidMount: function (info) {
 			const tooltip = info.event.extendedProps.tooltip;
 			if (tooltip) {
 				info.el.setAttribute('title', tooltip);
 			}
-			
+
 			// Add overlap indicator
 			if (info.event.extendedProps.overlap_flag) {
 				info.el.style.border = '2px dashed #f44336';
@@ -296,7 +296,7 @@ function fetch_events(start, end) {
 			let title = p.plan_type === "Downtime"
 				? `DT: ${p.downtime_type || ''}`
 				: `${p.product_item || ''} (${p.alloy || ''} / ${p.temper || ''})`;
-			
+
 			// Add weight info if available
 			if (p.plan_type !== "Downtime" && p.planned_weight_mt) {
 				title += ` | ${p.planned_weight_mt} MT`;
@@ -310,7 +310,7 @@ function fetch_events(start, end) {
 
 			// Get color based on status
 			let color = p.plan_type === "Downtime" ? '#e74c3c' : getStatusColor(p.status);
-			
+
 			// If overlap flagged, use a warning color
 			if (p.overlap_flag) {
 				color = '#ff5722'; // deep orange for overlap warning
@@ -344,7 +344,7 @@ function fetch_events(start, end) {
 function open_create_plan_dialog() {
 	// Default start/end based on current calendar date
 	let base_date = ppc_calendar ? ppc_calendar.getDate() : new Date();
-	
+
 	// Round to next hour for nicer default
 	let start_date = new Date(base_date);
 	let minutes = start_date.getMinutes();
@@ -354,10 +354,10 @@ function open_create_plan_dialog() {
 	}
 	start_date.setSeconds(0);
 	start_date.setMilliseconds(0);
-	
+
 	let end_date = new Date(start_date);
 	end_date.setHours(end_date.getHours() + 1); // 1 hour by default
-	
+
 	let start = frappe.datetime.get_datetime_as_string(start_date);
 	let end = frappe.datetime.get_datetime_as_string(end_date);
 
@@ -483,7 +483,7 @@ function open_create_plan_dialog() {
 
 			{
 				fieldname: 'charge_mix_recipe',
-				label: __('Charge Mix Recipe'),
+				label: __('Charge Mix Ratio'),
 				fieldtype: 'Link',
 				options: 'Charge Mix Ratio',
 				depends_on: "eval:doc.plan_type=='Casting'"
@@ -555,7 +555,7 @@ function open_create_plan_dialog() {
 					end_datetime: values.end_datetime
 				},
 				freeze: true,
-				callback: function(r) {
+				callback: function (r) {
 					const preview = r.message || {};
 					const affected = preview.affected_plans || [];
 					const shift_delta_seconds = preview.shift_delta_seconds || 0;
@@ -566,7 +566,7 @@ function open_create_plan_dialog() {
 					const sug_end = frappe.datetime.str_to_user(preview.suggested_end);
 
 					// Check if suggested slot is same as requested
-					const same_slot = 
+					const same_slot =
 						preview.requested_start === preview.suggested_start &&
 						preview.requested_end === preview.suggested_end;
 
@@ -608,8 +608,8 @@ function open_create_plan_dialog() {
 							}
 						}
 
-						const shift_from_display = preview.shift_from 
-							? frappe.datetime.str_to_user(preview.shift_from) 
+						const shift_from_display = preview.shift_from
+							? frappe.datetime.str_to_user(preview.shift_from)
 							: sug_start;
 
 						msg += __(
@@ -646,29 +646,29 @@ function open_create_plan_dialog() {
 		}
 	});
 
-	// Filter Caster field to Casting workstations
-	d.fields_dict.caster.get_query = function() {
+	// Filter Caster field to active Casting workstations
+	d.fields_dict.caster.get_query = function () {
 		return { filters: { workstation_type: 'Casting' } };
 	};
 
-	// Filter Furnace field to Foundry workstations
-	d.fields_dict.furnace.get_query = function() {
-		return { filters: { workstation_type: ['in', ['Foundry', 'Furnace', 'Melting Furnace']] } };
+	// Filter Furnace field to active Foundry workstations
+	d.fields_dict.furnace.get_query = function () {
+		return { filters: { workstation_type: 'Foundry' } };
 	};
 
 	// Product Item: Item Group = Product
-	d.fields_dict.product_item.get_query = function() {
+	d.fields_dict.product_item.get_query = function () {
 		return { filters: { item_group: 'Product' } };
 	};
 
 	// Alloy: Item Group = Alloy
-	d.fields_dict.alloy.get_query = function() {
+	d.fields_dict.alloy.get_query = function () {
 		return { filters: { item_group: 'Alloy' } };
 	};
 
 	// Charge Mix Recipe: filter by selected alloy
 	if (d.fields_dict.charge_mix_recipe) {
-		d.fields_dict.charge_mix_recipe.get_query = function() {
+		d.fields_dict.charge_mix_recipe.get_query = function () {
 			const alloy = d.get_value('alloy');
 			const filters = alloy ? { alloy: alloy, is_active: 1 } : { is_active: 1 };
 			return { filters };
@@ -701,7 +701,7 @@ function open_create_plan_dialog() {
 	};
 
 	d.show();
-	
+
 	// Trigger initial refresh to show/hide depends_on fields
 	setTimeout(() => {
 		d.refresh();
@@ -714,7 +714,7 @@ function do_create_plan_from_dialog(dialog, values) {
 		method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.create_plan",
 		args: { data: values },
 		freeze: true,
-		callback: function(r) {
+		callback: function (r) {
 			dialog.hide();
 			frappe.show_alert({
 				message: __('Plan {0} created and schedule updated.', [r.message]),
@@ -744,7 +744,7 @@ function export_plans(format) {
 
 	// Build URL for direct download
 	const url = `/api/method/swynix_mes.swynix_mes.api.ppc_caster_kiosk.export_plans?caster=${encodeURIComponent(current_caster)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&format=${encodeURIComponent(format)}`;
-	
+
 	// Open URL to trigger download
 	window.open(url, '_blank');
 }

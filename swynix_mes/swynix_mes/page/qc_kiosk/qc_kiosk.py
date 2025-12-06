@@ -66,228 +66,197 @@ def get_element_code_from_item(item_name):
     return item_name
 
 
+def _map_status_filter(status_val):
+    """Map UI status filter to QC Sample status values.
+    
+    Important: Each status category is mutually exclusive to prevent
+    samples from appearing in wrong filter results.
+    """
+    status_map = {
+        "Pending": ["Pending", "In Lab"],
+        "Approved": ["Approved", "Accepted", "Within Spec"],
+        "Within Spec": ["Approved", "Accepted", "Within Spec"],
+        "Rejected": ["Rejected"],  # Only Rejected, not Correction Required
+        "Correction Required": ["Correction Required"],  # Only Correction Required, not Rejected
+    }
+    return status_map.get(status_val, [status_val])
+
+
+def _map_display_status(status, overall=None):
+    """Normalize status for display."""
+    display_status = status or "Pending"
+    # Map both "Approved" and "Within Spec" to approved display
+    if display_status in ("Approved", "Accepted", "Within Spec") or overall == "In Spec":
+        return "Within Spec"
+    if display_status == "Rejected" or overall == "Out of Spec":
+        return "Rejected"
+    if display_status == "Correction Required":
+        return "Correction Required"
+    if display_status == "In Lab":
+        return "Pending"
+    return display_status
+
+
 @frappe.whitelist()
-def get_pending_samples(filters=None):
-    """
-    Get pending/recent spectro samples for QC review.
-    
-    Args:
-        filters: JSON dict with optional keys:
-            - from_date: Start date filter
-            - to_date: End date filter
-            - alloy: Filter by alloy
-            - status: Filter by sample status (Pending, Approved, Rejected, Correction Required)
-            - batch: Filter by specific Melting Batch name
-            
-    Returns:
-        list of sample dicts with batch info and element readings
-    """
+def export_samples_to_excel(filters=None):
+    """Export filtered samples to Excel."""
     import json
-    
+    from frappe.utils.xlsxutils import make_xlsx
+    from frappe.utils import nowdate
+
     if isinstance(filters, str):
         filters = json.loads(filters)
     
     filters = frappe._dict(filters or {})
     
-    # Build batch filters
-    batch_filters = {
-        "docstatus": ["<", 2]  # Not cancelled
-    }
+    sample_filters = {"docstatus": ["<", 2]}
     
     if filters.get("alloy"):
-        batch_filters["alloy"] = filters.alloy
+        sample_filters["alloy"] = filters.alloy
     
-    if filters.get("batch"):
-        batch_filters["name"] = filters.batch
+    if filters.get("source_type") and filters.source_type != "All":
+        sample_filters["source_type"] = filters.source_type
     
-    # Get batches
-    batches = frappe.get_all(
-        "Melting Batch",
-        filters=batch_filters,
-        fields=[
-            "name", "melting_batch_id", "alloy", "product_item", 
-            "furnace", "temper", "charge_mix_recipe", "status",
-            "ppc_casting_plan", "qc_status"
-        ],
-        order_by="creation desc",
-        limit=100
-    )
-    
-    if not batches:
-        return []
-    
-    batch_names = [b.name for b in batches]
-    batch_map = {b.name: b for b in batches}
-    
-    # Build sample filters
-    sample_filters = {
-        "parent": ["in", batch_names],
-        "parenttype": "Melting Batch"
-    }
+    if filters.get("status") and filters.status != "All":
+        sample_filters["status"] = ["in", _map_status_filter(filters.status)]
     
     # Date filters on sample_time
-    if filters.get("from_date"):
-        from_dt = f"{filters.from_date} 00:00:00"
-        sample_filters["sample_time"] = [">=", from_dt]
+    if filters.get("from_date") and filters.get("to_date"):
+        sample_filters["sample_time"] = ["between", [f"{filters.from_date} 00:00:00", f"{filters.to_date} 23:59:59"]]
+    elif filters.get("from_date"):
+        sample_filters["sample_time"] = [">=", f"{filters.from_date} 00:00:00"]
+    elif filters.get("to_date"):
+        sample_filters["sample_time"] = ["<=", f"{filters.to_date} 23:59:59"]
     
-    if filters.get("to_date"):
-        to_dt = f"{filters.to_date} 23:59:59"
-        if "sample_time" in sample_filters:
-            sample_filters["sample_time"] = ["between", [f"{filters.from_date} 00:00:00", to_dt]]
-        else:
-            sample_filters["sample_time"] = ["<=", to_dt]
+    # Fetch basic fields
+    data = frappe.get_all(
+        "QC Sample",
+        filters=sample_filters,
+        fields=[
+            "name", "sample_id", "source_type", "source_document", "alloy", "product_item", 
+            "furnace", "caster", "sample_time", "status", "overall_result", 
+            "qc_comment", "correction_note", "deviation_messages"
+        ],
+        order_by="sample_time desc"
+    )
     
-    # Status filter - check both new 'status' field and legacy 'result_status'
-    if filters.get("status") and filters.status != "All":
-        status_val = filters.status
-        # Map display status to field values
-        status_map = {
-            "Pending": ["Pending", "In Lab"],
-            "Approved": ["Accepted", "Within Limit"],
-            "Rejected": ["Rejected", "Out of Limit"],
-            "Correction Required": ["Correction Required"]
-        }
-        if status_val in status_map:
-            sample_filters["status"] = ["in", status_map[status_val]]
+    # Fetch elements for each sample to include in export
+    for d in data:
+        sample_doc = frappe.get_doc("QC Sample", d.name)
+        d.elements = {el.element: el.sample_pct for el in sample_doc.elements if el.sample_pct is not None}
+
+    # Identify all unique elements across samples to create columns
+    all_elements = set()
+    for d in data:
+        if hasattr(d, "elements"):
+            all_elements.update(d.elements.keys())
+    sorted_elements = sorted(list(all_elements))
+
+    # Prepare rows
+    columns = ["Sample ID", "Source Type", "Source Document", "Alloy", "Product", "Furnace", "Caster", "Time", "Status", "Result", "QC Comment", "Correction Note", "Deviations"]
+    columns.extend(sorted_elements)
     
-    # Get samples with all fields
-    samples = frappe.db.sql("""
-        SELECT
-            s.name,
-            s.parent,
-            s.sample_id,
-            s.sample_time,
-            s.status,
-            s.overall_result,
-            s.result_status,
-            s.correction_required,
-            s.remarks,
-            s.spec_master,
-            s.si_percent,
-            s.fe_percent,
-            s.cu_percent,
-            s.mn_percent,
-            s.mg_percent,
-            s.zn_percent,
-            s.ti_percent,
-            s.al_percent
-        FROM `tabMelting Batch Spectro Sample` s
-        WHERE s.parent IN %(batch_names)s
-        AND s.parenttype = 'Melting Batch'
-        ORDER BY s.sample_time DESC
-    """, {"batch_names": batch_names}, as_dict=True)
+    rows = [columns]
     
-    # Filter by date if needed (SQL didn't handle it)
-    if filters.get("from_date") or filters.get("to_date"):
-        filtered_samples = []
-        from_dt = get_datetime(f"{filters.from_date} 00:00:00") if filters.get("from_date") else None
-        to_dt = get_datetime(f"{filters.to_date} 23:59:59") if filters.get("to_date") else None
+    for d in data:
+        row = [
+            d.sample_id, d.source_type, d.source_document, d.alloy, d.product_item,
+            d.furnace, d.caster, d.sample_time, d.status, d.overall_result,
+            d.qc_comment, d.correction_note, d.deviation_messages
+        ]
+        # Add element values
+        for el in sorted_elements:
+            val = d.elements.get(el, "")
+            row.append(val)
+        rows.append(row)
         
-        for s in samples:
-            if s.sample_time:
-                sample_dt = get_datetime(s.sample_time)
-                if from_dt and sample_dt < from_dt:
-                    continue
-                if to_dt and sample_dt > to_dt:
-                    continue
-            filtered_samples.append(s)
-        samples = filtered_samples
+    xlsx_file = make_xlsx(rows, "QC Samples")
+    file_name = f"QC_Samples_{nowdate()}.xlsx"
+
+    frappe.response["filename"] = file_name
+    frappe.response["filecontent"] = xlsx_file.getvalue()
+    frappe.response["type"] = "binary"
+
+
+@frappe.whitelist()
+def get_pending_samples(filters=None):
+    """
+    Get pending/recent QC samples across all sources.
     
-    # Filter by status if needed
+    Supports QC Sample DocType (Melting Batch, Casting Run, Coil) and
+    keeps backward compatibility with the existing filter object.
+    """
+    import json
+    if isinstance(filters, str):
+        filters = json.loads(filters)
+    
+    filters = frappe._dict(filters or {})
+    
+    sample_filters = {"docstatus": ["<", 2]}
+    
+    if filters.get("alloy"):
+        sample_filters["alloy"] = filters.alloy
+    
+    if filters.get("source_type") and filters.source_type != "All":
+        sample_filters["source_type"] = filters.source_type
+    
     if filters.get("status") and filters.status != "All":
-        status_val = filters.status
-        status_map = {
-            "Pending": ["Pending", "In Lab", None, ""],
-            "Approved": ["Accepted", "Within Limit", "Approved"],
-            "Rejected": ["Rejected", "Out of Limit"],
-            "Correction Required": ["Correction Required"]
-        }
-        if status_val in status_map:
-            allowed = status_map[status_val]
-            samples = [s for s in samples if (s.status in allowed or s.result_status in allowed)]
+        sample_filters["status"] = ["in", _map_status_filter(filters.status)]
     
-    # Build result
+    # Date filters on sample_time
+    if filters.get("from_date") and filters.get("to_date"):
+        sample_filters["sample_time"] = ["between", [f"{filters.from_date} 00:00:00", f"{filters.to_date} 23:59:59"]]
+    elif filters.get("from_date"):
+        sample_filters["sample_time"] = [">=", f"{filters.from_date} 00:00:00"]
+    elif filters.get("to_date"):
+        sample_filters["sample_time"] = ["<=", f"{filters.to_date} 23:59:59"]
+    
+    samples = frappe.get_all(
+        "QC Sample",
+        filters=sample_filters,
+        fields=[
+            "name", "sample_id", "sample_sequence_no", "sample_time",
+            "source_type", "source_document", "melting_batch", "casting_run", "mother_coil",
+            "alloy", "furnace", "caster", "product_item", "temper",
+            "status", "overall_result", "correction_required", "spec_master"
+        ],
+        order_by="sample_time desc, creation desc",
+        limit=200
+    )
+    
     result = []
     for s in samples:
-        batch = batch_map.get(s.parent)
-        if not batch:
-            continue
-        
-        # Build elements dict
-        elements = {}
-        for elem, field in ELEMENT_FIELDS.items():
-            val = s.get(field)
-            if val is not None:
-                elements[elem] = flt(val, 4)
-        
-        # Get ACCM name if available
-        accm_name = None
-        if batch.alloy:
-            accm_name = frappe.db.get_value(
-                "Alloy Chemical Composition Master",
-                {"alloy": batch.alloy, "is_active": 1},
-                "name"
-            )
-        
-        # Determine display status
-        display_status = s.status or s.result_status or "Pending"
-        if display_status == "Within Limit":
-            display_status = "Approved"
-        elif display_status == "Out of Limit":
-            display_status = "Rejected"
-        elif display_status == "Accepted":
-            display_status = "Approved"
-        elif display_status == "In Lab":
-            display_status = "Pending"
+        display_status = _map_display_status(s.status, s.overall_result)
         
         result.append({
             "name": s.name,
-            "melting_batch": s.parent,
-            "batch_id": batch.melting_batch_id or s.parent,
             "sample_id": s.sample_id,
+            "sample_sequence_no": s.sample_sequence_no,
             "sample_time": str(s.sample_time) if s.sample_time else None,
-            "alloy": batch.alloy,
-            "product": batch.product_item,
-            "furnace": batch.furnace,
+            "source_type": s.source_type,
+            "source_document": s.source_document,
+            "melting_batch": s.melting_batch,
+            "casting_run": s.casting_run,
+            "mother_coil": s.mother_coil,
+            "alloy": s.alloy,
+            "product": s.product_item,
+            "furnace": s.furnace,
+            "caster": s.caster,
             "status": display_status,
             "overall_result": s.overall_result,
             "correction_required": s.correction_required,
-            "elements": elements,
-            "accm_name": accm_name,
-            "casting_plan": batch.ppc_casting_plan,
-            "temper": batch.temper,
-            "recipe": batch.charge_mix_recipe,
-            "batch_status": batch.status,
-            "batch_qc_status": batch.qc_status
+            "spec_master": s.spec_master
         })
     
     return result
 
 
 @frappe.whitelist()
-def get_sample_details(batch, sample_id):
+def get_sample_details(batch=None, sample_id=None, sample_name=None):
     """
-    Get detailed sample information with spec comparison.
+    Get detailed QC Sample information with spec comparison.
     
-    Uses the composition_check utility for comprehensive evaluation of:
-    - Normal Limit: Single element range checks
-    - Sum Limit: Sum of multiple elements against limit
-    - Ratio: Ratio between two elements
-    - Remainder: Aluminium minimum % or remainder conditions
-    
-    Args:
-        batch: Melting Batch name
-        sample_id: Sample ID (e.g., "S1", "S2")
-        
-    Returns:
-        dict with:
-        - batch_info: Basic batch information
-        - sample_info: Sample row data
-        - spec_table: Element specifications from ACCM
-        - element_results: Element readings with spec comparison
-        - failed_rules: List of failed specification rules with human-readable messages
-        - deviation_messages: List of deviation messages for UI display
-        - overall_status: Pending / OK / Out of Spec
+    Supports QC samples from Melting Batch, Casting Run, and Coil.
     """
     from swynix_mes.swynix_mes.utils.composition_check import (
         evaluate_sample_against_alloy,
@@ -295,75 +264,70 @@ def get_sample_details(batch, sample_id):
         get_active_composition_master
     )
     
-    if not batch or not sample_id:
-        frappe.throw(_("Batch and Sample ID are required"))
+    # Resolve QC Sample
+    if not sample_name and sample_id:
+        lookup_filters = {"sample_id": sample_id}
+        if batch:
+            lookup_filters["source_document"] = batch
+        sample_name = frappe.db.get_value("QC Sample", lookup_filters, "name")
     
-    # Load batch
-    try:
-        batch_doc = frappe.get_doc("Melting Batch", batch)
-    except frappe.DoesNotExistError:
-        frappe.throw(_("Melting Batch {0} not found").format(batch))
+    if not sample_name:
+        frappe.throw(_("Sample is required"))
     
-    # Find sample row
-    sample_row = None
-    for s in batch_doc.spectro_samples:
-        if s.sample_id == sample_id:
-            sample_row = s
-            break
+    sample_doc = frappe.get_doc("QC Sample", sample_name)
     
-    if not sample_row:
-        frappe.throw(_("Sample {0} not found in batch {1}").format(sample_id, batch))
-    
-    # Build batch info
-    batch_info = {
-        "name": batch_doc.name,
-        "batch_id": batch_doc.melting_batch_id or batch_doc.name,
-        "alloy": batch_doc.alloy,
-        "product": batch_doc.product_item,
-        "furnace": batch_doc.furnace,
-        "temper": batch_doc.temper,
-        "recipe": batch_doc.charge_mix_recipe,
-        "casting_plan": batch_doc.ppc_casting_plan,
-        "status": batch_doc.status,
-        "qc_status": batch_doc.qc_status
+    # Source info (kept under batch_info key for UI compatibility)
+    source_info = {
+        "name": sample_doc.source_document,
+        "batch_id": sample_doc.source_document,
+        "alloy": sample_doc.alloy,
+        "product": sample_doc.product_item,
+        "furnace": sample_doc.furnace,
+        "caster": sample_doc.caster,
+        "temper": sample_doc.temper,
+        "recipe": None,
+        "casting_plan": sample_doc.casting_plan,
+        "status": sample_doc.status,
+        "qc_status": sample_doc.status,
+        "source_type": sample_doc.source_type,
+        "melting_batch": sample_doc.melting_batch,
+        "casting_run": sample_doc.casting_run,
+        "mother_coil": sample_doc.mother_coil,
+        "sample_sequence_no": sample_doc.sample_sequence_no,
     }
     
-    # Build sample info
     sample_info = {
-        "name": sample_row.name,
-        "sample_id": sample_row.sample_id,
-        "sample_time": str(sample_row.sample_time) if sample_row.sample_time else None,
-        "status": sample_row.status or sample_row.result_status or "Pending",
-        "overall_result": getattr(sample_row, "overall_result", None),
-        "correction_required": sample_row.correction_required,
-        "remarks": sample_row.remarks,
-        "spec_master": getattr(sample_row, "spec_master", None)
+        "name": sample_doc.name,
+        "sample_id": sample_doc.sample_id,
+        "sample_time": str(sample_doc.sample_time) if sample_doc.sample_time else None,
+        "status": sample_doc.status or "Pending",
+        "overall_result": sample_doc.overall_result,
+        "correction_required": sample_doc.correction_required,
+        "remarks": sample_doc.qc_comment or sample_doc.remarks,
+        "spec_master": sample_doc.spec_master,
+        "source_type": sample_doc.source_type,
+        "source_document": sample_doc.source_document,
     }
     
-    # Get current element readings
+    # Build current readings
     current_readings = {}
-    for elem, field in ELEMENT_FIELDS.items():
-        val = getattr(sample_row, field, None)
-        if val is not None:
-            current_readings[elem] = flt(val, 4)
+    for el in sample_doc.elements:
+        elem_code = getattr(el, "element_code", None) or get_element_code(el.element)
+        if el.sample_pct is not None and elem_code:
+            current_readings[elem_code] = flt(el.sample_pct, 4)
     
-    # Load ACCM for spec
+    # Load ACCM
     accm = None
     accm_name = None
     spec_table = []
-    
-    if batch_doc.alloy:
-        accm = get_active_composition_master(batch_doc.alloy)
-        if accm:
-            accm_name = accm.name
-    
-    # Use composition_check utility for comprehensive evaluation
-    eval_result = evaluate_sample_against_alloy(batch_doc.alloy, current_readings)
-    
-    # Build spec table from ACCM rules
-    element_specs = {}  # {element_code: {min, max, condition_text}}
+    element_specs = {}
     sum_rules = []
     ratio_rules = []
+    
+    if sample_doc.alloy:
+        accm = get_active_composition_master(sample_doc.alloy)
+        if accm:
+            accm_name = accm.name
     
     if accm:
         for rule in accm.composition_rules or []:
@@ -396,7 +360,6 @@ def get_sample_details(batch, sample_id):
                     }
                     
             elif condition_type == "Sum Limit":
-                # Build element label for sum
                 sum_elements = [e for e in [elem_code, elem2_code, elem3_code] if e]
                 sum_label = "+".join(sum_elements)
                 
@@ -447,25 +410,25 @@ def get_sample_details(batch, sample_id):
                         "limit_type": "Minimum"
                     }
     
-    # Build element results with spec comparison (for Normal Limit rules only in the table)
+    eval_result = evaluate_sample_against_alloy(sample_doc.alloy, current_readings)
+    
     element_results = []
     failed_rules = []
     has_readings = False
     
-    for elem in ["Si", "Fe", "Cu", "Mn", "Mg", "Zn", "Ti", "Al"]:
-        actual = current_readings.get(elem)
-        spec = element_specs.get(elem, {})
-        
+    for el in sample_doc.elements:
+        elem_code = getattr(el, "element_code", None) or get_element_code(el.element)
+        spec = element_specs.get(elem_code, {})
         lower_limit = spec.get("min")
         upper_limit = spec.get("max")
-        limit_type = spec.get("limit_type", "Range")
+        limit_type = spec.get("limit_type", el.limit_type or "Range")
         
+        actual = el.sample_pct
         within_spec = None
         if actual is not None:
             has_readings = True
             within_spec = check_within_spec(actual, lower_limit, upper_limit, limit_type)
         
-        # Build spec text
         spec_text = "-"
         if lower_limit is not None and upper_limit is not None:
             spec_text = f"{flt(lower_limit, 4)} – {flt(upper_limit, 4)}"
@@ -475,18 +438,15 @@ def get_sample_details(batch, sample_id):
             spec_text = f"≤ {flt(upper_limit, 4)}"
         
         element_results.append({
-            "element": elem,
+            "element": elem_code or el.element,
             "spec_text": spec_text,
             "lower_limit": lower_limit,
             "upper_limit": upper_limit,
-            "actual": actual,
+            "actual": flt(actual, 4) if actual is not None else None,
             "within_spec": within_spec
         })
     
-    # Use evaluation results from composition_check for failed rules and deviation messages
     deviation_messages = eval_result.get("deviation_messages", [])
-    
-    # Build failed_rules from evaluation result
     for rule_result in eval_result.get("rule_results", []):
         if not rule_result.get("pass_fail"):
             failed_rules.append({
@@ -495,7 +455,6 @@ def get_sample_details(batch, sample_id):
                 "message": rule_result.get("expected_text", "")
             })
     
-    # Determine overall status
     if not has_readings:
         overall_status = "Pending"
     elif eval_result.get("overall_pass", True):
@@ -504,7 +463,7 @@ def get_sample_details(batch, sample_id):
         overall_status = "Out of Spec"
     
     return {
-        "batch_info": batch_info,
+        "batch_info": source_info,
         "sample_info": sample_info,
         "spec_table": spec_table,
         "element_results": element_results,
@@ -619,20 +578,12 @@ def build_failure_message(elem, actual, lower, upper, limit_type):
 
 
 @frappe.whitelist()
-def update_sample_result(batch, sample_id, readings=None, action="save", comment=None):
+def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=None, action="save", comment=None):
     """
-    Update sample readings and perform action.
-    
-    Args:
-        batch: Melting Batch name
-        sample_id: Sample ID (e.g., "S1")
-        readings: JSON dict of element readings {"Fe": 0.25, "Si": 0.12, ...}
-        action: One of "save", "approve", "reject", "correction_required"
-        comment: Optional QC comment
-        
-    Returns:
-        dict with updated sample data
+    Update QC Sample readings and perform QC actions.
+    Supports multi-source QC Sample DocType.
     """
+    from swynix_mes.swynix_mes.doctype.qc_sample.qc_sample import get_element_code as qc_element_code
     import json
     
     if isinstance(readings, str):
@@ -640,168 +591,147 @@ def update_sample_result(batch, sample_id, readings=None, action="save", comment
     
     readings = frappe._dict(readings or {})
     
-    if not batch or not sample_id:
-        frappe.throw(_("Batch and Sample ID are required"))
-    
     if action not in ["save", "approve", "reject", "correction_required"]:
         frappe.throw(_("Invalid action: {0}").format(action))
     
-    # Load batch
-    batch_doc = frappe.get_doc("Melting Batch", batch)
+    if not sample_name and sample_id:
+        lookup_filters = {"sample_id": sample_id}
+        if batch:
+            lookup_filters["source_document"] = batch
+        sample_name = frappe.db.get_value("QC Sample", lookup_filters, "name")
     
-    # Find sample row
-    sample_row = None
-    sample_idx = None
-    for idx, s in enumerate(batch_doc.spectro_samples):
-        if s.sample_id == sample_id:
-            sample_row = s
-            sample_idx = idx
-            break
+    if not sample_name:
+        frappe.throw(_("Sample is required"))
     
-    if not sample_row:
-        frappe.throw(_("Sample {0} not found in batch {1}").format(sample_id, batch))
+    sample_doc = frappe.get_doc("QC Sample", sample_name)
+    
+    if sample_doc.docstatus == 1:
+        frappe.throw(_("QC Sample is already submitted."))
     
     # Update element readings
-    for elem, field in ELEMENT_FIELDS.items():
-        if elem in readings:
-            setattr(sample_row, field, flt(readings[elem], 4))
+    for el in sample_doc.elements:
+        elem_code = getattr(el, "element_code", None) or qc_element_code(el.element)
+        if elem_code and elem_code in readings:
+            el.sample_pct = flt(readings[elem_code], 4)
+        elif el.element and el.element in readings:
+            el.sample_pct = flt(readings[el.element], 4)
     
-    # Update status based on action
-    if action == "save":
-        if sample_row.status == "Pending":
-            sample_row.status = "In Lab"
-    elif action == "approve":
-        sample_row.status = "Accepted"
-        if hasattr(sample_row, "overall_result"):
-            sample_row.overall_result = "In Spec"
-        sample_row.result_status = "Within Limit"
-    elif action == "reject":
-        sample_row.status = "Rejected"
-        if hasattr(sample_row, "overall_result"):
-            sample_row.overall_result = "Out of Spec"
-        sample_row.result_status = "Out of Limit"
-    elif action == "correction_required":
-        sample_row.status = "Correction Required"
-        if hasattr(sample_row, "overall_result"):
-            sample_row.overall_result = "Out of Spec"
-        sample_row.result_status = "Out of Limit"
-        sample_row.correction_required = 1
+    # Default status bump for save
+    if action == "save" and sample_doc.status == "Pending":
+        sample_doc.status = "In Lab"
     
-    # Update comment/remarks
-    if comment:
-        sample_row.remarks = comment
-        if hasattr(sample_row, "correction_note"):
-            sample_row.correction_note = comment
+    # Evaluate QC
+    sample_doc.evaluate_qc()
     
-    # Update lab technician
-    if hasattr(sample_row, "lab_technician"):
-        sample_row.lab_technician = frappe.session.user
-    
-    # Evaluate sample and save QC feedback
-    from swynix_mes.swynix_mes.utils.composition_check import (
-        evaluate_sample_against_alloy,
-        format_deviations_for_storage
-    )
-    
-    # Build sample_elements dict from readings (prefer readings dict, fallback to sample_row fields)
-    sample_elements = {}
-    for elem, field in ELEMENT_FIELDS.items():
-        # First check readings dict (user input)
-        if elem in readings:
-            sample_elements[elem] = flt(readings[elem], 4)
-        # Fallback to sample_row field
-        else:
-            value = getattr(sample_row, field, None)
-            if value is not None:
-                sample_elements[elem] = flt(value, 4)
-    
-    # Also add S if present
-    if hasattr(sample_row, "s_pct") and sample_row.s_pct is not None:
-        sample_elements["S"] = flt(sample_row.s_pct, 4)
-    
-    # Evaluate against alloy spec
-    eval_result = evaluate_sample_against_alloy(batch_doc.alloy, sample_elements)
-    
-    # Format deviations for storage
-    deviation_summary, deviation_detail = format_deviations_for_storage(eval_result)
-    
-    # Build deviation summary as line-by-line text
-    deviation_messages = eval_result.get("deviation_messages", [])
-    deviation_summary_text = "\n".join(deviation_messages) if deviation_messages else ""
-    deviation_count = len(deviation_messages)
-    
-    # Determine QC status based on action and evaluation
+    # Map actions to QC Sample workflow
     if action == "approve":
-        qc_status = "Within Spec"
+        if sample_doc.overall_result != "In Spec":
+            frappe.throw(_("Cannot approve a sample that is out of spec."))
+        sample_doc.qc_action = "Approve"
+        sample_doc.qc_comment = comment or ""
+        sample_doc.status = "Within Spec"  # Use "Within Spec" per spec
+        sample_doc.qc_decision = "Within Spec"
     elif action == "reject":
-        qc_status = "Rejected"
+        sample_doc.qc_action = "Reject"
+        sample_doc.qc_comment = comment or ""
+        sample_doc.status = "Rejected"
+        sample_doc.qc_decision = "Rejected"
     elif action == "correction_required":
-        qc_status = "Correction Required"
+        sample_doc.qc_action = "Request Correction"
+        sample_doc.correction_note = comment or ""
+        sample_doc.qc_comment = comment or ""
+        sample_doc.correction_required = 1
+        sample_doc.status = "Correction Required"
+        sample_doc.qc_decision = "Correction Required"
+    
+    # Persist changes
+    sample_doc.lab_technician = frappe.session.user
+    if action != "save":
+        sample_doc.qc_decision_time = now_datetime()
+    
+    if action in ["approve", "reject", "correction_required"]:
+        sample_doc.flags.from_kiosk = True
+        sample_doc.save()
+        sample_doc.submit()
+        sample_doc.reload()
+        
+        # Propagate status to source
+        propagate_qc_status(sample_doc)
     else:
-        # For "save", determine from evaluation
-        if eval_result.get("overall_pass", False):
-            qc_status = "Within Spec"
-        else:
-            qc_status = "Out of Spec"
+        sample_doc.save()
     
-    # Save QC feedback fields to sample row
-    if hasattr(sample_row, "qc_status"):
-        sample_row.qc_status = qc_status
-    if hasattr(sample_row, "qc_comment"):
-        sample_row.qc_comment = comment or ""
-    if hasattr(sample_row, "qc_deviation_summary"):
-        sample_row.qc_deviation_summary = deviation_summary_text
-    if hasattr(sample_row, "qc_deviation_count"):
-        sample_row.qc_deviation_count = deviation_count
-    if hasattr(sample_row, "qc_deviation_detail"):
-        sample_row.qc_deviation_detail = deviation_detail
-    if hasattr(sample_row, "qc_last_updated_by"):
-        sample_row.qc_last_updated_by = frappe.session.user
-    if hasattr(sample_row, "qc_last_updated_on"):
-        sample_row.qc_last_updated_on = frappe.utils.now_datetime()
-    
-    # Handle batch-level updates
-    if action == "correction_required":
-        # Set batch QC status
-        if hasattr(batch_doc, "qc_status"):
-            batch_doc.qc_status = "Correction Required"
-        
-        # Add process log entry
-        plog = batch_doc.append("process_logs", {})
-        plog.log_time = now_datetime()
-        plog.event_type = "Correction"
-        plog.sample_id = sample_id
-        plog.note = f"QC Correction Required: {comment}" if comment else "QC Correction Required"
-        
-    elif action == "approve":
-        # Check if all elements are within spec
-        details = get_sample_details(batch, sample_id)
-        if details.get("overall_status") == "OK":
-            # Update batch QC status
-            if hasattr(batch_doc, "qc_status"):
-                batch_doc.qc_status = "OK"
-            
-            # Set lab signed by
-            if hasattr(batch_doc, "lab_signed_by"):
-                batch_doc.lab_signed_by = frappe.session.user
-    
-    elif action == "reject":
-        # Update batch QC status if needed
-        if hasattr(batch_doc, "qc_status"):
-            batch_doc.qc_status = "Rejected"
-    
-    batch_doc.save()
     frappe.db.commit()
     
-    # Build response
     return {
         "success": True,
-        "sample_id": sample_id,
-        "status": sample_row.status,
-        "batch_status": batch_doc.status,
-        "batch_qc_status": getattr(batch_doc, "qc_status", None),
-        "message": get_action_message(action, sample_id)
+        "sample_id": sample_doc.sample_id,
+        "sample_name": sample_doc.name,
+        "status": sample_doc.status,
+        "batch_status": sample_doc.status,
+        "batch_qc_status": sample_doc.status,
+        "message": get_action_message(action, sample_doc.sample_id)
     }
+
+
+def propagate_qc_status(qc_sample):
+    """Propagate QC status back to source documents (Melting Batch / Coil)."""
+    if not qc_sample:
+        return
+
+    source_type = qc_sample.source_type
+    
+    # Melting Propagation (handle both old and new source_type values)
+    if source_type in ("Melting", "Melting Batch") and qc_sample.melting_batch:
+        # Find the row in melting batch spectro samples and update it
+        batch = frappe.get_doc("Melting Batch", qc_sample.melting_batch)
+        updated = False
+        for s in batch.spectro_samples:
+            if s.sample_id == qc_sample.sample_id:
+                s.status = qc_sample.status
+                s.overall_result = qc_sample.overall_result
+                s.correction_required = qc_sample.correction_required
+                s.qc_status = qc_sample.overall_result # Sync local status
+                s.qc_comment = qc_sample.qc_comment
+                # Accept both "Approved" and "Within Spec" as approval
+                if qc_sample.status in ("Approved", "Within Spec"):
+                    s.status = "Accepted" # Legacy mapping
+                updated = True
+                break
+        
+        if updated:
+            # Also update batch level QC status if this is the latest
+            # Accept both "Approved" and "Within Spec" as approval
+            if qc_sample.status in ("Approved", "Within Spec"):
+                batch.qc_status = "OK"
+            elif qc_sample.status == "Correction Required":
+                batch.qc_status = "Correction Required"
+            # If rejected, we don't necessarily change batch status, just the sample row
+            
+            batch.flags.ignore_validate = True # Avoid re-triggering heavy validations
+            batch.save(ignore_permissions=True)
+
+    # Casting Propagation (handle both old and new source_type values)
+    elif source_type in ("Casting", "Casting Coil", "Coil", "Casting Run") and qc_sample.mother_coil:
+        # Update Mother Coil
+        coil = frappe.get_doc("Mother Coil", qc_sample.mother_coil)
+        coil.qc_status = qc_sample.status
+        coil.qc_comments = qc_sample.qc_comment
+        coil.qc_deviation_summary = qc_sample.deviation_messages
+        coil.coil_qc_sample = qc_sample.name
+        
+        # Generate final ID on approval (accept both "Approved" and "Within Spec")
+        from swynix_mes.swynix_mes.api.casting_kiosk import generate_final_coil_id
+        if qc_sample.status in ("Approved", "Within Spec") and not coil.is_scrap and not coil.coil_id:
+            coil.coil_id = generate_final_coil_id(coil)
+            
+        # Handle rejection
+        if qc_sample.status == "Rejected":
+            coil.qc_status = "Rejected"
+            # Optionally mark as scrap or just let user do it?
+            # User instructions say "Propagate status", we'll stick to setting fields.
+        
+        coil.flags.ignore_validate = True
+        coil.save(ignore_permissions=True)
 
 
 def get_action_message(action, sample_id):
@@ -839,142 +769,93 @@ def get_furnaces():
 
 
 @frappe.whitelist()
-def get_qc_history_for_sample(batch, sample_id):
+def get_qc_history_for_sample(batch=None, sample_id=None, sample_name=None):
     """
-    Get charge and correction history for a specific sample.
-    
-    Determines the time window between the previous sample and current sample,
-    then retrieves all charges and corrections in that window.
-    
-    Args:
-        batch: Melting Batch name
-        sample_id: Sample ID (e.g., "S1", "S2")
-        
-    Returns:
-        dict with:
-        - samples: All samples in the batch with their status
-        - charges: Raw material charges in the time window
-        - corrections: Correction entries in the time window
-        - window: Time window (from, to) used for the query
-        - current_sample: Current sample info
+    Charge & correction history for a QC Sample (any source).
+    Shows all charge entries before this sample, melt corrections, and previous decisions.
     """
-    if not batch or not sample_id:
-        frappe.throw(_("Batch and Sample ID are required"))
+    if not sample_name and sample_id:
+        lookup_filters = {"sample_id": sample_id}
+        if batch:
+            lookup_filters["source_document"] = batch
+        sample_name = frappe.db.get_value("QC Sample", lookup_filters, "name")
     
-    # Load batch
-    try:
-        batch_doc = frappe.get_doc("Melting Batch", batch)
-    except frappe.DoesNotExistError:
-        frappe.throw(_("Melting Batch {0} not found").format(batch))
+    if not sample_name:
+        frappe.throw(_("Sample is required"))
     
-    # Get all samples of this batch ordered by time
-    samples_list = []
-    for s in batch_doc.spectro_samples:
-        samples_list.append({
-            "name": s.name,
-            "sample_id": s.sample_id,
-            "sample_time": s.sample_time,
-            "status": s.status or s.result_status or "Pending",
-            "overall_result": getattr(s, "overall_result", None)
-        })
+    sample_doc = frappe.get_doc("QC Sample", sample_name)
+    curr_time = get_datetime(sample_doc.sample_time) if sample_doc.sample_time else None
     
-    # Sort by sample_time
-    samples_sorted = sorted(samples_list, key=lambda x: x["sample_time"] or "")
-    
-    # Find current sample index
-    current_idx = None
-    current_sample = None
-    for idx, s in enumerate(samples_sorted):
-        if s["sample_id"] == sample_id:
-            current_idx = idx
-            current_sample = s
-            break
-    
-    if current_idx is None:
-        frappe.throw(_("Sample {0} not found in batch {1}").format(sample_id, batch))
-    
-    # Determine time window
-    curr_time = samples_sorted[current_idx]["sample_time"]
-    
-    if current_idx > 0:
-        prev_time = samples_sorted[current_idx - 1]["sample_time"]
-    else:
-        # First sample - use batch start time or creation
-        prev_time = batch_doc.batch_start_datetime or batch_doc.creation
-    
-    # Convert times for comparison
-    if curr_time:
-        curr_time = get_datetime(curr_time)
-    if prev_time:
-        prev_time = get_datetime(prev_time)
-    
-    # Get charges in the time window
+    # Charges and corrections pulled from melting batch context when available
     charges = []
-    for rm in batch_doc.raw_materials:
-        rm_time = None
-        
-        # Try posting_datetime first
-        if hasattr(rm, "posting_datetime") and rm.posting_datetime:
-            rm_time = get_datetime(rm.posting_datetime)
-        
-        # If no posting_datetime, we can only use idx ordering
-        # Include all charges if we can't determine time
-        include = True
-        
-        if rm_time and prev_time and curr_time:
-            # Time-based filtering
-            include = (prev_time < rm_time <= curr_time)
-        elif rm_time and curr_time:
-            include = (rm_time <= curr_time)
-        
-        if include:
-            charges.append({
-                "idx": rm.idx,
-                "posting_datetime": str(rm.posting_datetime) if hasattr(rm, "posting_datetime") and rm.posting_datetime else None,
-                "item_code": rm.item_code,
-                "item_name": rm.item_name,
-                "ingredient_type": rm.ingredient_type,
-                "qty_kg": rm.qty_kg,
-                "source_bin": rm.source_bin,
-                "batch_no": rm.batch_no,
-                "is_correction": rm.is_correction
-            })
-    
-    # Get corrections from process logs
     corrections = []
-    for log in batch_doc.process_logs:
-        if log.event_type != "Correction":
-            continue
-        
-        log_time = get_datetime(log.log_time) if log.log_time else None
-        
-        include = True
-        if log_time and prev_time and curr_time:
-            include = (prev_time < log_time <= curr_time)
-        elif log_time and curr_time:
-            include = (log_time <= curr_time)
-        
-        if include:
-            corrections.append({
-                "idx": log.idx,
-                "log_time": str(log.log_time) if log.log_time else None,
-                "event_type": log.event_type,
-                "sample_id": log.sample_id,
-                "note": log.note,
-                "temp_c": log.temp_c
-            })
+    correction_charges = []
     
-    # Also get correction charges (raw materials marked as correction)
-    correction_charges = [c for c in charges if c.get("is_correction")]
+    if sample_doc.melting_batch:
+        batch_doc = frappe.get_doc("Melting Batch", sample_doc.melting_batch)
+        
+        for rm in batch_doc.raw_materials:
+            rm_time = None
+            if hasattr(rm, "posting_datetime") and rm.posting_datetime:
+                rm_time = get_datetime(rm.posting_datetime)
+            
+            include = True
+            if rm_time and curr_time:
+                include = rm_time <= curr_time
+            
+            if include:
+                entry = {
+                    "idx": rm.idx,
+                    "posting_datetime": str(rm.posting_datetime) if hasattr(rm, "posting_datetime") and rm.posting_datetime else None,
+                    "item_code": rm.item_code,
+                    "item_name": rm.item_name,
+                    "ingredient_type": rm.ingredient_type,
+                    "qty_kg": rm.qty_kg,
+                    "source_bin": rm.source_bin,
+                    "batch_no": rm.batch_no,
+                    "is_correction": rm.is_correction
+                }
+                charges.append(entry)
+                if rm.is_correction:
+                    correction_charges.append(entry)
+        
+        for log in batch_doc.process_logs:
+            if log.event_type != "Correction":
+                continue
+            log_time = get_datetime(log.log_time) if log.log_time else None
+            include = True
+            if log_time and curr_time:
+                include = log_time <= curr_time
+            if include:
+                corrections.append({
+                    "idx": log.idx,
+                    "log_time": str(log.log_time) if log.log_time else None,
+                    "event_type": log.event_type,
+                    "sample_id": log.sample_id,
+                    "note": log.note,
+                    "temp_c": log.temp_c
+                })
     
-    # Format samples for display
+    # Previous QC samples for the same source
+    samples_raw = frappe.get_all(
+        "QC Sample",
+        filters={
+            "source_type": sample_doc.source_type,
+            "source_document": sample_doc.source_document,
+            "docstatus": ["<=", 1]
+        },
+        fields=["name", "sample_id", "sample_time", "status", "overall_result"],
+        order_by="sample_time asc, creation asc"
+    )
+    
     samples_display = []
-    for s in samples_sorted:
-        # Map status to display text
-        status = s.get("status", "Pending")
-        overall = s.get("overall_result")
+    current_idx = 0
+    
+    for idx, s in enumerate(samples_raw):
+        status = s.status or "Pending"
+        overall = s.overall_result
         
-        if status == "Accepted" or overall == "In Spec":
+        if status in ("Approved", "Accepted") or overall == "In Spec":
             display_status = "Within Spec"
         elif status == "Rejected" or overall == "Out of Spec":
             display_status = "Out of Spec"
@@ -983,11 +864,15 @@ def get_qc_history_for_sample(batch, sample_id):
         else:
             display_status = "Pending"
         
+        is_current = s.name == sample_doc.name
+        if is_current:
+            current_idx = idx
+        
         samples_display.append({
-            "sample_id": s["sample_id"],
-            "sample_time": str(s["sample_time"]) if s["sample_time"] else None,
+            "sample_id": s.sample_id,
+            "sample_time": str(s.sample_time) if s.sample_time else None,
             "status": display_status,
-            "is_current": s["sample_id"] == sample_id
+            "is_current": is_current
         })
     
     return {
@@ -996,18 +881,18 @@ def get_qc_history_for_sample(batch, sample_id):
         "corrections": corrections,
         "correction_charges": correction_charges,
         "window": {
-            "from": str(prev_time) if prev_time else None,
+            "from": None,
             "to": str(curr_time) if curr_time else None
         },
         "current_sample": {
-            "sample_id": current_sample["sample_id"],
-            "sample_time": str(current_sample["sample_time"]) if current_sample["sample_time"] else None,
+            "sample_id": sample_doc.sample_id,
+            "sample_time": str(sample_doc.sample_time) if sample_doc.sample_time else None,
             "index": current_idx + 1,
-            "total": len(samples_sorted)
+            "total": len(samples_display)
         },
         "batch_info": {
-            "name": batch_doc.name,
-            "batch_id": batch_doc.melting_batch_id,
-            "batch_start": str(batch_doc.batch_start_datetime) if batch_doc.batch_start_datetime else None
+            "name": sample_doc.melting_batch,
+            "batch_id": sample_doc.melting_batch,
+            "batch_start": None
         }
     }

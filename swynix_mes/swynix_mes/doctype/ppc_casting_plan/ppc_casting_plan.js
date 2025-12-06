@@ -3,8 +3,8 @@
 
 frappe.ui.form.on("PPC Casting Plan", {
 	setup(frm) {
-		// Filter caster: only Workstations with workstation_type = 'Casting'
-		frm.set_query("caster", function() {
+		// Filter caster: only active Workstations with workstation_type = 'Casting'
+		frm.set_query("caster", function () {
 			return {
 				filters: {
 					workstation_type: "Casting"
@@ -12,8 +12,8 @@ frappe.ui.form.on("PPC Casting Plan", {
 			};
 		});
 
-		// Filter furnace: only Workstations with workstation_type = 'Foundry'
-		frm.set_query("furnace", function() {
+		// Filter furnace: only active Workstations with workstation_type = 'Foundry'
+		frm.set_query("furnace", function () {
 			return {
 				filters: {
 					workstation_type: "Foundry"
@@ -22,7 +22,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 		});
 
 		// Filter alloy to show only items in Alloy item group
-		frm.set_query("alloy", function() {
+		frm.set_query("alloy", function () {
 			return {
 				filters: {
 					item_group: "Alloy"
@@ -31,7 +31,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 		});
 
 		// Filter product_item to show only items in Product item group
-		frm.set_query("product_item", function() {
+		frm.set_query("product_item", function () {
 			return {
 				filters: {
 					item_group: "Product"
@@ -40,7 +40,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 		});
 
 		// Filter charge_mix_recipe to show only active, submitted CMRs for selected alloy
-		frm.set_query("charge_mix_recipe", function() {
+		frm.set_query("charge_mix_recipe", function () {
 			let filters = {
 				is_active: 1,
 				docstatus: 1
@@ -52,7 +52,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 		});
 
 		// Filter so_item in child table by selected sales_order
-		frm.set_query("so_item", "sales_orders", function(doc, cdt, cdn) {
+		frm.set_query("so_item", "sales_orders", function (doc, cdt, cdn) {
 			let row = locals[cdt][cdn];
 			if (row.sales_order) {
 				return {
@@ -82,13 +82,13 @@ frappe.ui.form.on("PPC Casting Plan", {
 		// Add custom buttons
 		if (!frm.is_new() && frm.doc.docstatus === 0) {
 			if (frm.doc.status === "Draft") {
-				frm.add_custom_button(__("Mark as Planned"), function() {
+				frm.add_custom_button(__("Mark as Planned"), function () {
 					frm.set_value("status", "Planned");
 					frm.save();
 				}, __("Status"));
 			}
 			if (frm.doc.status === "Planned") {
-				frm.add_custom_button(__("Release to Melting"), function() {
+				frm.add_custom_button(__("Release to Melting"), function () {
 					frm.set_value("status", "Released to Melting");
 					frm.save();
 				}, __("Status"));
@@ -97,7 +97,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 
 		// Show linked documents
 		if (frm.doc.melting_batch) {
-			frm.add_custom_button(__("View Melting Batch"), function() {
+			frm.add_custom_button(__("View Melting Batch"), function () {
 				frappe.set_route("Form", "Melting Batch", frm.doc.melting_batch);
 			}, __("Links"));
 		}
@@ -141,9 +141,9 @@ frappe.ui.form.on("PPC Casting Plan", {
 	product_item(frm) {
 		// Auto-fetch product details (if custom fields exist on Item)
 		if (frm.doc.product_item) {
-			frappe.db.get_value("Item", frm.doc.product_item, 
-				["custom_width_mm", "custom_gauge_mm", "custom_temper", "custom_alloy"], 
-				function(r) {
+			frappe.db.get_value("Item", frm.doc.product_item,
+				["custom_width_mm", "custom_gauge_mm", "custom_temper", "custom_alloy"],
+				function (r) {
 					if (r) {
 						if (r.custom_width_mm && !frm.doc.width_mm) {
 							frm.set_value("width_mm", r.custom_width_mm);
@@ -168,7 +168,7 @@ frappe.ui.form.on("PPC Casting Plan", {
 		if (!frm.doc.alloy) {
 			frm.set_value("charge_mix_recipe", null);
 		}
-		frm.set_query("charge_mix_recipe", function() {
+		frm.set_query("charge_mix_recipe", function () {
 			let filters = {
 				is_active: 1,
 				docstatus: 1
@@ -190,7 +190,7 @@ frappe.ui.form.on("PPC Casting Plan SO", {
 
 		// Auto-fetch customer
 		if (row.sales_order) {
-			frappe.db.get_value("Sales Order", row.sales_order, "customer", function(r) {
+			frappe.db.get_value("Sales Order", row.sales_order, "customer", function (r) {
 				if (r && r.customer) {
 					frappe.model.set_value(cdt, cdn, "customer", r.customer);
 				}
@@ -202,7 +202,7 @@ frappe.ui.form.on("PPC Casting Plan SO", {
 		let row = locals[cdt][cdn];
 		// Auto-fetch item_code from SO Item
 		if (row.so_item) {
-			frappe.db.get_value("Sales Order Item", row.so_item, "item_code", function(r) {
+			frappe.db.get_value("Sales Order Item", row.so_item, "item_code", function (r) {
 				if (r && r.item_code) {
 					frappe.model.set_value(cdt, cdn, "item_code", r.item_code);
 				}
@@ -250,7 +250,7 @@ function calculate_duration(frm) {
 			// Display formatted duration
 			let hours = Math.floor(diff_minutes / 60);
 			let mins = diff_minutes % 60;
-			let duration_str = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+			let duration_str = hours > 0 ? `${hours}h ${mins} m` : `${mins} m`;
 			frm.dashboard.set_headline(__("Duration: {0}", [duration_str]));
 		}
 	}

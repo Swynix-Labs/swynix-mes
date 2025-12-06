@@ -17,6 +17,68 @@ Provides backend operations for the Casting Kiosk page:
 import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime, flt, nowdate
+from swynix_mes.swynix_mes.utils.coil_logging import log_coil_event
+
+
+# ==================== HELPERS ====================
+
+def generate_final_coil_id(coil_doc):
+    """
+    Generate a final coil ID only after QC approval.
+    
+    Pattern: C<caster_code><YY><MM><DD><4-digit-seq>
+    """
+    caster_code = ""
+    if coil_doc.caster:
+        caster_code = "".join([c for c in coil_doc.caster if c.isalnum()])[:3].upper()
+    dt = now_datetime()
+    prefix = f"C{caster_code}{dt.strftime('%y%m%d')}"
+    
+    last = frappe.db.sql(
+        """
+        SELECT coil_id FROM `tabMother Coil`
+        WHERE coil_id LIKE %s
+        ORDER BY coil_id DESC
+        LIMIT 1
+        """,
+        (prefix + "%",),
+    )
+    last_num = 0
+    if last:
+        try:
+            last_num = int(last[0][0].replace(prefix, "") or 0)
+        except Exception:
+            last_num = 0
+    
+    return f"{prefix}{last_num + 1:04d}"
+
+
+def sync_coil_qc_from_sample(sample_doc):
+    """
+    Copy QC status/comments/deviations from QC Sample to Mother Coil.
+    """
+    if not sample_doc.mother_coil:
+        return
+    
+    coil = frappe.get_doc("Mother Coil", sample_doc.mother_coil)
+    
+    # Status
+    coil.qc_status = sample_doc.status or sample_doc.overall_result or "Pending"
+    coil.qc_comments = sample_doc.qc_comment or sample_doc.correction_note or sample_doc.remarks
+    coil.qc_deviation_summary = sample_doc.deviation_messages
+    coil.coil_qc_sample = sample_doc.name
+    
+    # Final coil id only on approve
+    if sample_doc.status == "Approved" and not coil.is_scrap and not coil.coil_id:
+        coil.coil_id = generate_final_coil_id(coil)
+    
+    # Scrap / recast handling on reject
+    if sample_doc.status == "Rejected":
+        coil.is_scrap = 1
+        coil.scrap_reason = coil.scrap_reason or f"QC Rejected: {sample_doc.qc_comment or 'Out of Spec'}"
+        coil.coil_id = None
+    
+    coil.save(ignore_permissions=True)
 
 
 # ==================== CASTER & PLAN DATA ====================
@@ -24,23 +86,27 @@ from frappe.utils import getdate, now_datetime, flt, nowdate
 @frappe.whitelist()
 def get_casters():
     """
-    Return list of active casters.
+    Return list of casters (Workstations with workstation_type = 'Casting').
+    
+    This ensures caster selection in Casting Kiosk is consistent with
+    PPC Caster Kiosk and PPC Casting Plan form, all filtering by
+    Workstation type.
     """
     return frappe.get_all(
-        "Caster",
-        filters={"is_active": 1},
-        fields=["name", "caster_id", "caster_name", "no_of_strands"],
-        order_by="caster_id asc"
+        "Workstation",
+        filters={"workstation_type": "Casting"},
+        fields=["name", "workstation_name"],
+        order_by="name asc"
     )
 
 
 @frappe.whitelist()
 def get_casting_plans(caster, for_date=None):
     """
-    Get casting plans for a caster on a given date.
+    Get casting plans for a caster (Workstation) on a given date.
     
     Args:
-        caster: Caster name/ID
+        caster: Workstation name (workstation_type = 'Casting')
         for_date: Date to filter (defaults to today)
         
     Returns:
@@ -58,11 +124,7 @@ def get_casting_plans(caster, for_date=None):
     start_of_day = f"{for_date} 00:00:00"
     end_of_day = f"{for_date} 23:59:59"
     
-    # Get caster_id from Caster if needed (for linking with PPC that might use workstation)
-    caster_doc = frappe.get_doc("Caster", caster) if frappe.db.exists("Caster", caster) else None
-    caster_id = caster_doc.caster_id if caster_doc else caster
-    
-    # Query plans
+    # Query plans - caster is directly the Workstation name
     plans = frappe.db.sql("""
         SELECT
             name,
@@ -84,7 +146,7 @@ def get_casting_plans(caster, for_date=None):
             customer
         FROM `tabPPC Casting Plan`
         WHERE plan_type = 'Casting'
-          AND (caster = %(caster)s OR caster = %(caster_id)s)
+          AND caster = %(caster)s
           AND (
               (start_datetime BETWEEN %(start)s AND %(end)s)
               OR plan_date = %(date)s
@@ -93,7 +155,6 @@ def get_casting_plans(caster, for_date=None):
         ORDER BY start_datetime ASC
     """, {
         "caster": caster,
-        "caster_id": caster_id,
         "start": start_of_day,
         "end": end_of_day,
         "date": for_date
@@ -217,7 +278,8 @@ def get_coils_for_run(run_name):
             cast_date, cast_start_time, cast_end_time,
             planned_width_mm, planned_gauge_mm, planned_weight_mt,
             actual_width_mm, actual_gauge_mm, actual_weight_mt,
-            qc_status, qc_deviation_summary, is_scrap, scrap_reason
+            qc_status, qc_deviation_summary, qc_comments, coil_qc_sample,
+            is_scrap, scrap_reason
         FROM `tabMother Coil`
         WHERE casting_run = %(run)s
         ORDER BY cast_start_time ASC, creation ASC
@@ -294,6 +356,14 @@ def start_casting(plan_name):
     run.run_start_time = now_datetime()
     run.status = "Casting"
     run.insert()
+    log_coil_event(
+        coil=None,
+        casting_run=run.name,
+        event_type="CASTING_RUN_STARTED",
+        reference_doctype="Casting Run",
+        reference_name=run.name,
+        details=f"Casting run started for plan {plan_name}"
+    )
     
     # Update plan status
     frappe.db.set_value("PPC Casting Plan", plan_name, {
@@ -357,19 +427,40 @@ def stop_run(run_name):
     run.total_cast_weight = flt(total_weight, 3)
     run.total_scrap_weight = flt(scrap_weight, 3)
     run.save()
+    log_coil_event(
+        coil=None,
+        casting_run=run.name,
+        event_type="CASTING_RUN_STOPPED",
+        reference_doctype="Casting Run",
+        reference_name=run.name,
+        details="Casting run stopped/completed"
+    )
     
-    # Update PPC Casting Plan status
+    # Update PPC Casting Plan status (tightened rule)
     if run.casting_plan:
         update_fields = {
             "casting_end": now_datetime()
         }
-        
-        # Set status to Coils Complete if at least one approved coil
-        if approved_count > 0:
+
+        plan = frappe.get_doc("PPC Casting Plan", run.casting_plan)
+        planned_weight = flt(plan.planned_weight_mt or 0)
+
+        # Fetch coils with needed fields
+        coil_rows = frappe.get_all(
+            "Mother Coil",
+            filters={"casting_run": run_name},
+            fields=["name", "qc_status", "coil_id", "is_scrap", "actual_weight_mt"]
+        )
+
+        no_pending = all(c.qc_status not in ["Pending", "Sample Taken"] for c in coil_rows)
+        has_approved_final = any((c.qc_status == "Approved" and c.coil_id) for c in coil_rows)
+        approved_scrap_weight = sum(flt(c.actual_weight_mt or 0) for c in coil_rows if c.qc_status in ["Approved"] or c.is_scrap)
+
+        if no_pending and has_approved_final and (planned_weight == 0 or approved_scrap_weight >= planned_weight):
             update_fields["status"] = "Coils Complete"
         else:
-            update_fields["status"] = "Coils Complete"  # Even without approved coils
-        
+            update_fields["status"] = "Casting"
+
         # Calculate final weight from coils
         final_weight = flt(total_weight - scrap_weight, 3)
         if final_weight > 0:
@@ -435,6 +526,29 @@ def create_coil(run_name):
     coil.qc_status = "Pending"
     coil.insert()
     
+    # Validate only one active coil per caster (no overlapping without end time)
+    active_unfinished = frappe.get_all(
+        "Mother Coil",
+        filters={
+            "caster": coil.caster,
+            "casting_run": run_name,
+            "cast_end_time": ["is", "not set"],
+            "name": ["!=", coil.name],
+            "is_scrap": 0
+        },
+        limit=1
+    )
+    if active_unfinished:
+        frappe.throw(_("Another coil is still in Casting for this caster. Finish it before creating a new one."))
+    log_coil_event(
+        coil=coil.name,
+        casting_run=run_name,
+        event_type="COIL_STARTED",
+        reference_doctype="Mother Coil",
+        reference_name=coil.name,
+        details=f"Temp ID {coil.temp_coil_id}"
+    )
+    
     # Add to run's coil table
     run.append("coils", {
         "sequence": len(run.coils) + 1,
@@ -492,6 +606,14 @@ def finish_coil(coil_name, actual_width_mm=None, actual_gauge_mm=None, actual_we
         coil.actual_weight_mt = flt(actual_weight_mt, 3)
     
     coil.save()
+    log_coil_event(
+        coil=coil.name,
+        casting_run=coil.casting_run,
+        event_type="COIL_FINISHED",
+        reference_doctype="Mother Coil",
+        reference_name=coil.name,
+        details="Coil finished with actual dimensions"
+    )
     
     # Update Coil QC with measured dimensions
     coil_qc = frappe.db.get_value("Coil QC", {"mother_coil": coil_name}, "name")
@@ -568,6 +690,14 @@ def mark_coil_scrap(coil_name, scrap_reason=None, scrap_weight_mt=None):
     coil.coil_id = None  # Clear final coil ID
     
     coil.save()
+    log_coil_event(
+        coil=coil.name,
+        casting_run=coil.casting_run,
+        event_type="COIL_MARKED_SCRAP",
+        reference_doctype="Mother Coil",
+        reference_name=coil.name,
+        remarks=coil.scrap_reason
+    )
     
     # Update Coil QC
     coil_qc = frappe.db.get_value("Coil QC", {"mother_coil": coil_name}, "name")
@@ -644,7 +774,55 @@ def get_coil_detail(coil_name):
     
     coil["chemistry_status"] = chemistry_status
     
+    # Attach QC Sample info (unified QC)
+    qc_sample = coil.get("coil_qc_sample") or frappe.db.get_value(
+        "QC Sample",
+        {"source_type": ["in", ["Coil", "Casting Coil"]], "mother_coil": coil_name, "docstatus": ["<", 2]},
+        "name"
+    )
+    coil["coil_qc_sample"] = qc_sample
+    if qc_sample:
+        qs = frappe.get_doc("QC Sample", qc_sample)
+        coil["qc_status"] = qs.status or qs.overall_result
+        coil["qc_comments"] = qs.qc_comment or qs.correction_note or qs.remarks
+        coil["qc_deviation_summary"] = qs.deviation_messages
+        coil["qc_overall_result"] = qs.overall_result
+        coil["qc_sample_time"] = qs.sample_time
+    
+    # Chemistry status aligns to coil qc_status when present
+    coil["chemistry_status"] = coil.get("qc_status") or coil.get("chemistry_status") or "Pending"
+    
     return coil
+
+
+@frappe.whitelist()
+def get_coil_process_log(coil):
+    """
+    Safe fetch of coil process log entries. Returns [] if DocType not present.
+    """
+    if not frappe.db.exists("DocType", "Coil Process Log"):
+        return []
+    return frappe.get_all(
+        "Coil Process Log",
+        filters={"coil": coil},
+        fields=["timestamp", "event_type", "user", "details", "remarks", "reference_doctype", "reference_name"],
+        order_by="timestamp asc"
+    )
+
+
+@frappe.whitelist()
+def get_coil_process_logs(coil_name):
+    # Backward-compatible alias
+    return get_coil_process_log(coil_name)
+
+
+# Placeholder for future inventory integration
+def create_coil_stock_entry_if_required(coil_doc):
+    """
+    Placeholder: integrate Stock Entry creation when ready.
+    """
+    # TODO: implement Stock Entry creation and warehouse movement
+    return
 
 
 @frappe.whitelist()
@@ -677,6 +855,72 @@ def get_or_create_coil_qc(coil_name):
     frappe.db.commit()
     
     return {"name": qc.name}
+
+
+@frappe.whitelist()
+def get_or_create_coil_qc_sample(coil_name):
+    """
+    Get or create QC Sample for a Mother Coil and return its name.
+    Uses the unified QC Sample DocType leveraged by QC Kiosk.
+    """
+    if not coil_name:
+        frappe.throw(_("Coil name is required."))
+    
+    # Check existing QC Sample (include old and new source_type values)
+    existing = frappe.db.get_value(
+        "QC Sample",
+        {"source_type": ["in", ["Casting", "Coil", "Casting Coil"]], "mother_coil": coil_name, "docstatus": ["<", 2]},
+        "name"
+    )
+    if existing:
+        return {"qc_sample": existing}
+    
+    coil = frappe.get_doc("Mother Coil", coil_name)
+    
+    # Determine next sample number for this coil
+    existing_samples = frappe.get_all(
+        "QC Sample",
+        filters={
+            "source_type": ["in", ["Casting", "Coil", "Casting Coil"]],
+            "mother_coil": coil.name
+        },
+        fields=["sample_no", "sample_sequence_no"],
+        order_by="sample_sequence_no desc",
+        limit=1
+    )
+    
+    sample_seq = 1
+    if existing_samples and existing_samples[0].sample_sequence_no:
+        sample_seq = existing_samples[0].sample_sequence_no + 1
+    sample_no = f"S{sample_seq}"
+    
+    qc_doc = frappe.new_doc("QC Sample")
+    # Use standardized source_type value
+    qc_doc.source_type = "Casting"
+    qc_doc.source_doctype = "Mother Coil"
+    qc_doc.source_document = coil.name
+    qc_doc.source_name = coil.name
+    qc_doc.mother_coil = coil.name
+    qc_doc.coil = coil.name
+    qc_doc.casting_run = coil.casting_run
+    qc_doc.casting_plan = coil.casting_plan
+    qc_doc.melting_batch = coil.melting_batch
+    qc_doc.caster = coil.caster
+    qc_doc.furnace = coil.furnace
+    qc_doc.alloy = coil.alloy
+    qc_doc.product_item = coil.product_item
+    qc_doc.temper = coil.temper
+    qc_doc.sample_time = now_datetime()
+    qc_doc.sample_id = sample_no
+    qc_doc.sample_no = sample_no
+    qc_doc.sample_sequence_no = sample_seq
+    qc_doc.status = "Pending"
+    qc_doc.overall_result = "Pending"
+    
+    qc_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    
+    return {"qc_sample": qc_doc.name}
 
 
 # ==================== STATUS SYNCHRONIZATION ====================
@@ -742,4 +986,6 @@ def sync_plan_status_from_casting(run_name, new_status):
     
     plan.save()
     frappe.db.commit()
+
+
 

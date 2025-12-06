@@ -1,0 +1,454 @@
+{
+    "actions": [],
+    "allow_rename": 0,
+    "autoname": "naming_series:",
+    "creation": "2025-12-06 14:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "identity_section",
+        "naming_series",
+        "sample_id",
+        "sample_sequence_no",
+        "sample_time",
+        "column_break_id",
+        "source_type",
+        "sample_no",
+        "qc_decision",
+        "source_document",
+        "source_document_link",
+        "column_break_id2",
+        "alloy",
+        "furnace",
+        "caster",
+        "context_section",
+        "melting_batch",
+        "casting_run",
+        "mother_coil",
+        "coil",
+        "column_break_ctx",
+        "casting_plan",
+        "product_item",
+        "temper",
+        "spec_section",
+        "spec_master",
+        "status",
+        "overall_result",
+        "column_break_spec",
+        "lab_technician",
+        "qc_decision_time",
+        "element_section",
+        "elements",
+        "deviation_section",
+        "deviation_messages",
+        "deviation_count",
+        "deviation_detail_json",
+        "qc_section",
+        "qc_action",
+        "qc_comment",
+        "correction_note",
+        "column_break_qc",
+        "correction_required",
+        "remarks",
+        "coil_section",
+        "coils_affected",
+        "final_coil_generated",
+        "amended_from"
+    ],
+    "fields": [
+        {
+            "fieldname": "identity_section",
+            "fieldtype": "Section Break",
+            "label": "Sample Identity"
+        },
+        {
+            "default": "QCS-.YYYY.-.#####",
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "hidden": 1,
+            "label": "Naming Series",
+            "options": "QCS-.YYYY.-.#####",
+            "reqd": 1
+        },
+        {
+            "description": "Human-readable sample ID like S1, S2, S3...",
+            "fieldname": "sample_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Sample ID",
+            "reqd": 1
+        },
+        {
+            "description": "Sequence number for this source (1, 2, 3...)",
+            "fieldname": "sample_sequence_no",
+            "fieldtype": "Int",
+            "label": "Sequence No"
+        },
+        {
+            "default": "Now",
+            "fieldname": "sample_time",
+            "fieldtype": "Datetime",
+            "in_list_view": 1,
+            "label": "Sample Time",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_id",
+            "fieldtype": "Column Break"
+        },
+        {
+            "description": "Type of source document for this sample",
+            "fieldname": "source_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Source Type",
+            "options": "Melting\nCasting",
+            "reqd": 1
+        },
+        {
+            "description": "Human-readable sample ID like S1, S2, S3...",
+            "fieldname": "sample_no",
+            "fieldtype": "Data",
+            "label": "Sample No"
+        },
+        {
+            "default": "Pending",
+            "fieldname": "qc_decision",
+            "fieldtype": "Select",
+            "label": "QC Decision",
+            "options": "Pending\nWithin Spec\nApproved\nCorrection Required\nRejected"
+        },
+        {
+            "description": "Name of the source document",
+            "fieldname": "source_document",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Source Document",
+            "read_only": 1
+        },
+        {
+            "description": "Doctype name of source (e.g. Melting Batch, Mother Coil)",
+            "fieldname": "source_doctype",
+            "fieldtype": "Data",
+            "label": "Source Doctype",
+            "read_only": 1
+        },
+        {
+            "description": "Name/ID of source document (alias for source_document)",
+            "fieldname": "source_name",
+            "fieldtype": "Data",
+            "label": "Source Name",
+            "read_only": 1
+        },
+        {
+            "description": "Dynamic link to source document",
+            "fieldname": "source_document_link",
+            "fieldtype": "Dynamic Link",
+            "label": "Source Link",
+            "options": "source_doctype"
+        },
+        {
+            "fieldname": "column_break_id2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "alloy",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Alloy",
+            "options": "Item",
+            "reqd": 1
+        },
+        {
+            "description": "Furnace workstation (from Melting Batch)",
+            "fieldname": "furnace",
+            "fieldtype": "Link",
+            "in_standard_filter": 1,
+            "label": "Furnace",
+            "options": "Workstation"
+        },
+        {
+            "description": "Caster workstation (workstation_type = Casting)",
+            "fieldname": "caster",
+            "fieldtype": "Link",
+            "in_standard_filter": 1,
+            "label": "Caster",
+            "options": "Workstation"
+        },
+        {
+            "fieldname": "context_section",
+            "fieldtype": "Section Break",
+            "label": "Source Context"
+        },
+        {
+            "depends_on": "eval:doc.source_type == 'Melting' || doc.melting_batch",
+            "fieldname": "melting_batch",
+            "fieldtype": "Link",
+            "label": "Melting Batch",
+            "options": "Melting Batch"
+        },
+        {
+            "depends_on": "eval:doc.source_type == 'Casting' || doc.casting_run",
+            "fieldname": "casting_run",
+            "fieldtype": "Link",
+            "label": "Casting Run",
+            "options": "Casting Run"
+        },
+        {
+            "depends_on": "eval:doc.source_type == 'Casting' || doc.mother_coil",
+            "fieldname": "mother_coil",
+            "fieldtype": "Link",
+            "label": "Mother Coil",
+            "options": "Mother Coil"
+        },
+        {
+            "fieldname": "coil",
+            "fieldtype": "Link",
+            "label": "Coil",
+            "options": "Mother Coil"
+        },
+        {
+            "fieldname": "column_break_ctx",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "casting_plan",
+            "fieldtype": "Link",
+            "label": "Casting Plan",
+            "options": "PPC Casting Plan",
+            "read_only": 1
+        },
+        {
+            "fieldname": "product_item",
+            "fieldtype": "Link",
+            "label": "Product Item",
+            "options": "Item",
+            "read_only": 1
+        },
+        {
+            "fieldname": "temper",
+            "fieldtype": "Link",
+            "label": "Temper",
+            "options": "Temper",
+            "read_only": 1
+        },
+        {
+            "fieldname": "spec_section",
+            "fieldtype": "Section Break",
+            "label": "Specification & Status"
+        },
+        {
+            "description": "Alloy Chemical Composition Master used for evaluation",
+            "fieldname": "spec_master",
+            "fieldtype": "Link",
+            "label": "Composition Master",
+            "options": "Alloy Chemical Composition Master"
+        },
+        {
+            "default": "Pending",
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Status",
+            "options": "Pending\nIn Lab\nWithin Spec\nApproved\nCorrection Required\nRejected"
+        },
+        {
+            "default": "Pending",
+            "fieldname": "overall_result",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Overall Result",
+            "options": "Pending\nIn Spec\nOut of Spec"
+        },
+        {
+            "fieldname": "column_break_spec",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "lab_technician",
+            "fieldtype": "Link",
+            "label": "Lab Technician",
+            "options": "User"
+        },
+        {
+            "description": "When QC decision was made (approve/reject/correction)",
+            "fieldname": "qc_decision_time",
+            "fieldtype": "Datetime",
+            "label": "QC Decision Time"
+        },
+        {
+            "fieldname": "element_section",
+            "fieldtype": "Section Break",
+            "label": "Element Results"
+        },
+        {
+            "fieldname": "elements",
+            "fieldtype": "Table",
+            "label": "Element Results",
+            "options": "QC Sample Element"
+        },
+        {
+            "collapsible": 1,
+            "fieldname": "deviation_section",
+            "fieldtype": "Section Break",
+            "label": "Deviations"
+        },
+        {
+            "description": "Human-readable deviation messages",
+            "fieldname": "deviation_messages",
+            "fieldtype": "Long Text",
+            "label": "Deviation Messages"
+        },
+        {
+            "default": "0",
+            "fieldname": "deviation_count",
+            "fieldtype": "Int",
+            "label": "Deviation Count"
+        },
+        {
+            "description": "JSON detail of all deviations for reporting",
+            "fieldname": "deviation_detail_json",
+            "fieldtype": "Long Text",
+            "hidden": 1,
+            "label": "Deviation Detail (JSON)"
+        },
+        {
+            "fieldname": "qc_section",
+            "fieldtype": "Section Break",
+            "label": "QC Decision"
+        },
+        {
+            "description": "Action taken by QC",
+            "fieldname": "qc_action",
+            "fieldtype": "Select",
+            "label": "QC Action",
+            "options": "\nApprove\nReject\nRequest Correction"
+        },
+        {
+            "fieldname": "qc_comment",
+            "fieldtype": "Small Text",
+            "label": "QC Comment"
+        },
+        {
+            "depends_on": "eval:doc.qc_action == 'Request Correction' || doc.correction_required",
+            "fieldname": "correction_note",
+            "fieldtype": "Small Text",
+            "label": "Correction Note"
+        },
+        {
+            "fieldname": "column_break_qc",
+            "fieldtype": "Column Break"
+        },
+        {
+            "default": "0",
+            "fieldname": "correction_required",
+            "fieldtype": "Check",
+            "label": "Correction Required"
+        },
+        {
+            "fieldname": "remarks",
+            "fieldtype": "Small Text",
+            "label": "Remarks"
+        },
+        {
+            "depends_on": "eval:doc.source_type == 'Casting'",
+            "fieldname": "coil_section",
+            "fieldtype": "Section Break",
+            "label": "Coil Conversion"
+        },
+        {
+            "description": "List of temp coil IDs affected by this QC sample",
+            "fieldname": "coils_affected",
+            "fieldtype": "Small Text",
+            "label": "Coils Affected"
+        },
+        {
+            "default": "0",
+            "description": "Whether final coil IDs have been generated upon approval",
+            "fieldname": "final_coil_generated",
+            "fieldtype": "Check",
+            "label": "Final Coil Generated",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "QC Sample",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [],
+    "modified": "2025-12-06 14:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Swynix MES",
+    "name": "QC Sample",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Manufacturing Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Manufacturing User",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Quality Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        }
+    ],
+    "search_fields": "sample_id,source_type,source_document,alloy",
+    "show_title_field_in_link": 1,
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "title_field": "sample_id",
+    "track_changes": 1
+}

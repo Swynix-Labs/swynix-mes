@@ -304,7 +304,7 @@ def get_casters():
 	return frappe.get_all(
 		"Workstation",
 		filters={"workstation_type": "Casting"},
-		fields=["name"],
+		fields=["name", "workstation_name"],
 		order_by="name asc"
 	)
 
@@ -315,7 +315,7 @@ def get_furnaces():
 	return frappe.get_all(
 		"Workstation",
 		filters={"workstation_type": "Foundry"},
-		fields=["name"],
+		fields=["name", "workstation_name"],
 		order_by="name asc"
 	)
 
