@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"Yro-6AWk58\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>MES</b></span>\",\"col\":12}},{\"id\":\"EqdZM5EhBt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"PPC Caster Kiosk\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Kiosk\",\"col\":3}},{\"id\":\"cg7BkM_KcN\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Kiosk\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"hn2ZFCeJZE\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}}]",
+ "content": "[{\"id\":\"Yro-6AWk58\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>MES</b></span>\",\"col\":12}},{\"id\":\"EqdZM5EhBt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"PPC Caster Kiosk\",\"col\":3}},{\"id\":\"35tYQ85Z90\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Melting Kiosk\",\"col\":3}},{\"id\":\"cg7BkM_KcN\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"QC Kiosk\",\"col\":3}},{\"id\":\"vUP12UrLTh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Casting Kiosk\",\"col\":3}},{\"id\":\"8-5C1Cj9-n\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"hn2ZFCeJZE\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}}]",
  "creation": "2025-11-27 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -43,7 +43,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-12-05 16:54:07.620354",
+ "modified": "2025-12-06 08:43:07.520382",
  "modified_by": "Administrator",
  "module": "Swynix MES",
  "name": "Swynix MES",
@@ -67,6 +67,13 @@
    "doc_view": "List",
    "label": "PPC Caster Kiosk",
    "link_to": "ppc-caster-kiosk",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Casting Kiosk",
+   "link_to": "casting-kiosk",
    "type": "Page"
   },
   {

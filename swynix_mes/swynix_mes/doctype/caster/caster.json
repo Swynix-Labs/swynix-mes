@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:caster_id",
+ "creation": "2025-12-06 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "caster_id",
+  "caster_name",
+  "column_break_main",
+  "no_of_strands",
+  "is_active",
+  "description_section",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "caster_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Caster ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "caster_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Caster Name"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "2",
+   "fieldname": "no_of_strands",
+   "fieldtype": "Int",
+   "label": "No. of Strands"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-06 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Caster",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Manufacturing User"
+  }
+ ],
+ "quick_entry": 1,
+ "search_fields": "caster_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "caster_name",
+ "track_changes": 1
+}
+
+
+
+
+

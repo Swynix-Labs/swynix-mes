@@ -1,0 +1,200 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2025-12-06 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "links_section",
+  "naming_series",
+  "mother_coil",
+  "casting_run",
+  "column_break_links",
+  "qc_date",
+  "qc_inspector",
+  "dimensions_section",
+  "width_mm_measured",
+  "gauge_mm_measured",
+  "column_break_dim",
+  "thickness_variation",
+  "coil_weight_mt_measured",
+  "defects_section",
+  "surface_defects",
+  "disposition_section",
+  "qc_status",
+  "column_break_disp",
+  "qc_remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Links"
+  },
+  {
+   "default": "CQC-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "CQC-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mother_coil",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mother Coil",
+   "options": "Mother Coil",
+   "reqd": 1
+  },
+  {
+   "fieldname": "casting_run",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Casting Run",
+   "options": "Casting Run"
+  },
+  {
+   "fieldname": "column_break_links",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "qc_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "QC Date"
+  },
+  {
+   "fieldname": "qc_inspector",
+   "fieldtype": "Link",
+   "label": "QC Inspector",
+   "options": "User"
+  },
+  {
+   "fieldname": "dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Dimensions"
+  },
+  {
+   "fieldname": "width_mm_measured",
+   "fieldtype": "Float",
+   "label": "Width (mm) Measured",
+   "precision": "2"
+  },
+  {
+   "fieldname": "gauge_mm_measured",
+   "fieldtype": "Float",
+   "label": "Gauge (mm) Measured",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_dim",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Thickness variation as percentage",
+   "fieldname": "thickness_variation",
+   "fieldtype": "Float",
+   "label": "Thickness Variation (%)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "coil_weight_mt_measured",
+   "fieldtype": "Float",
+   "label": "Coil Weight (MT) Measured",
+   "precision": "3"
+  },
+  {
+   "fieldname": "defects_section",
+   "fieldtype": "Section Break",
+   "label": "Surface / Defects"
+  },
+  {
+   "fieldname": "surface_defects",
+   "fieldtype": "Table",
+   "label": "Surface Defects",
+   "options": "Coil Surface Defect"
+  },
+  {
+   "fieldname": "disposition_section",
+   "fieldtype": "Section Break",
+   "label": "Disposition"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "qc_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "QC Status",
+   "options": "Pending\nApproved\nRework\nScrap\nHold"
+  },
+  {
+   "fieldname": "column_break_disp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qc_remarks",
+   "fieldtype": "Small Text",
+   "label": "QC Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-06 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Coil QC",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Manufacturing User",
+   "write": 1
+  }
+ ],
+ "search_fields": "mother_coil,qc_status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
+
+
+
+
+

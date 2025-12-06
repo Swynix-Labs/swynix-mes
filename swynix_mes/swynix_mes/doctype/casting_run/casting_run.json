@@ -1,0 +1,233 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2025-12-06 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "links_section",
+  "naming_series",
+  "casting_plan",
+  "melting_batch",
+  "column_break_links",
+  "caster",
+  "furnace",
+  "status",
+  "time_section",
+  "run_start_time",
+  "run_end_time",
+  "column_break_time",
+  "run_date",
+  "totals_section",
+  "planned_coils",
+  "total_coils",
+  "column_break_totals",
+  "total_cast_weight",
+  "total_scrap_weight",
+  "coils_section",
+  "coils",
+  "notes_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Links"
+  },
+  {
+   "default": "CR-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "CR-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "casting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Casting Plan",
+   "options": "PPC Casting Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "melting_batch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Melting Batch",
+   "options": "Melting Batch",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_links",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "caster",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Caster",
+   "options": "Caster",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "melting_batch.furnace",
+   "fieldname": "furnace",
+   "fieldtype": "Link",
+   "label": "Furnace",
+   "options": "Workstation",
+   "read_only": 1
+  },
+  {
+   "default": "Planned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Planned\nCasting\nCompleted\nAborted"
+  },
+  {
+   "fieldname": "time_section",
+   "fieldtype": "Section Break",
+   "label": "Time"
+  },
+  {
+   "fieldname": "run_start_time",
+   "fieldtype": "Datetime",
+   "label": "Run Start Time"
+  },
+  {
+   "fieldname": "run_end_time",
+   "fieldtype": "Datetime",
+   "label": "Run End Time"
+  },
+  {
+   "fieldname": "column_break_time",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "run_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Run Date"
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "planned_coils",
+   "fieldtype": "Int",
+   "label": "Planned Coils"
+  },
+  {
+   "fieldname": "total_coils",
+   "fieldtype": "Int",
+   "label": "Total Coils",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_cast_weight",
+   "fieldtype": "Float",
+   "label": "Total Cast Weight (MT)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_scrap_weight",
+   "fieldtype": "Float",
+   "label": "Total Scrap Weight (MT)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coils_section",
+   "fieldtype": "Section Break",
+   "label": "Coils"
+  },
+  {
+   "fieldname": "coils",
+   "fieldtype": "Table",
+   "label": "Coils",
+   "options": "Casting Run Coil"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-06 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swynix MES",
+ "name": "Casting Run",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "casting_plan,melting_batch,caster",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
+
+
+
+
+

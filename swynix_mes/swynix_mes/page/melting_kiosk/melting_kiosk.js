@@ -1114,12 +1114,130 @@ function bind_qc_summary_links() {
 		e.stopPropagation();
 		var sample_name = $(this).data("sample-name");
 		if (sample_name) {
-			load_qc_feedback(sample_name);
+			// Find sample in context
+			var sample_data = null;
+			if (mk_spectro_context && mk_spectro_context.samples) {
+				sample_data = mk_spectro_context.samples.find(function(s) {
+					return s.name === sample_name;
+				});
+			}
+			
+			if (sample_data) {
+				show_qc_detail_popup(sample_data);
+			} else {
+				// Load from API if not in context
+				load_qc_feedback(sample_name);
+			}
+			
 			// Highlight the row
 			$("#mk_spectro_table tbody tr").removeClass("table-active");
 			$(this).closest("tr").addClass("table-active");
 		}
 	});
+}
+
+function show_qc_detail_popup(sample_data) {
+	if (!sample_data) return;
+	
+	// Parse deviation messages
+	var messages = [];
+	if (sample_data.qc_deviation_summary && sample_data.qc_deviation_summary.trim()) {
+		// Split by newline
+		sample_data.qc_deviation_summary.split(/\r?\n/).forEach(function(line) {
+			if (line && line.trim()) {
+				messages.push(line.trim());
+			}
+		});
+	}
+	
+	// Build status HTML
+	var qc_status = sample_data.qc_status || "Pending";
+	var status_class = "status-pending";
+	if (qc_status === "Within Spec") {
+		status_class = "status-approved";
+	} else if (qc_status === "Correction Required") {
+		status_class = "status-correction";
+	} else if (qc_status === "Rejected" || qc_status === "Out of Spec") {
+		status_class = "status-rejected";
+	}
+	
+	var status_html = '<span class="status-pill ' + status_class + '">' +
+		frappe.utils.escape_html(qc_status) + '</span>';
+	
+	// Build deviations HTML
+	var dev_html = '';
+	if (messages.length === 0) {
+		dev_html = '<div class="text-success" style="padding: 10px; background: #f0fdf4; border-radius: 6px;">' +
+			'<i class="fa fa-check-circle"></i> All elements within specification.</div>';
+	} else {
+		dev_html = '<div style="max-height: 300px; overflow-y: auto;">';
+		messages.forEach(function(msg) {
+			dev_html += '<div class="qc-dev-line" style="margin-bottom: 6px; padding: 8px 10px; background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 4px; font-size: 12px;">' +
+				'<i class="fa fa-exclamation-triangle text-danger"></i> ' +
+				frappe.utils.escape_html(msg) + '</div>';
+		});
+		dev_html += '</div>';
+	}
+	
+	// Build updated by info
+	var updated_info = '';
+	if (sample_data.qc_last_updated_by) {
+		updated_info = '<div class="text-muted" style="font-size: 11px; margin-top: 10px;">' +
+			'Last updated by <strong>' + frappe.utils.escape_html(sample_data.qc_last_updated_by) + '</strong>';
+		if (sample_data.qc_last_updated_on) {
+			updated_info += ' on ' + frappe.datetime.str_to_user(sample_data.qc_last_updated_on);
+		}
+		updated_info += '</div>';
+	}
+	
+	// Create dialog
+	var d = new frappe.ui.Dialog({
+		title: 'QC Details – ' + frappe.utils.escape_html(sample_data.sample_id || ''),
+		size: 'large',
+		fields: [
+			{
+				fieldtype: 'HTML',
+				fieldname: 'qc_content'
+			}
+		],
+		primary_action_label: 'Open in QC Kiosk',
+		primary_action: function() {
+			var url = '/app/qc-kiosk?batch=' + encodeURIComponent(mk_current_batch || '') +
+				'&sample=' + encodeURIComponent(sample_data.sample_id || '');
+			window.open(url, '_blank');
+		}
+	});
+	
+	// Set HTML content
+	var html = '<div style="padding: 10px;">';
+	
+	// Status row
+	html += '<div style="margin-bottom: 16px;">';
+	html += '<label class="text-muted" style="font-size: 11px; display: block; margin-bottom: 4px;">QC Status</label>';
+	html += status_html;
+	html += '</div>';
+	
+	// Deviations section
+	html += '<div style="margin-bottom: 16px;">';
+	html += '<label class="text-muted" style="font-size: 11px; display: block; margin-bottom: 8px;">Specification Deviations (' + messages.length + ')</label>';
+	html += dev_html;
+	html += '</div>';
+	
+	// QC Comment section
+	html += '<div style="margin-bottom: 10px;">';
+	html += '<label class="text-muted" style="font-size: 11px; display: block; margin-bottom: 4px;">QC Comment / Instruction to Melting</label>';
+	html += '<div style="padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; min-height: 60px;">';
+	html += sample_data.qc_comment ? frappe.utils.escape_html(sample_data.qc_comment) : '<span class="text-muted">No comment provided.</span>';
+	html += '</div>';
+	html += '</div>';
+	
+	// Updated info
+	html += updated_info;
+	
+	html += '</div>';
+	
+	d.fields_dict.qc_content.$wrapper.html(html);
+	d.show();
 }
 
 function bind_spectro_row_clicks() {
