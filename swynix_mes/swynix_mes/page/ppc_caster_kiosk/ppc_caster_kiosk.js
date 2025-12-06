@@ -365,8 +365,8 @@ function open_create_plan_dialog() {
 		title: __('Create Caster Plan'),
 		fields: [
 			{
-				fieldname: 'caster',
-				label: __('Caster'),
+				fieldname: 'casting_workstation',
+				label: __('Casting'),
 				fieldtype: 'Link',
 				options: 'Workstation',
 				reqd: 1,
@@ -482,10 +482,7 @@ function open_create_plan_dialog() {
 			{ fieldname: 'section_recipe', fieldtype: 'Section Break', label: __('Recipe & Remarks') },
 
 			{
-				fieldname: 'charge_mix_recipe',
-				label: __('Charge Mix Recipe'),
 				fieldtype: 'Link',
-				options: 'Charge Mix Ratio',
 				depends_on: "eval:doc.plan_type=='Casting'"
 			},
 			{
@@ -511,7 +508,7 @@ function open_create_plan_dialog() {
 		],
 		primary_action_label: __('Create Plan'),
 		primary_action(values) {
-			if (!values.caster) {
+			if (!values.casting_workstation) {
 				frappe.msgprint(__("Please select a caster."));
 				return;
 			}
@@ -550,7 +547,7 @@ function open_create_plan_dialog() {
 			frappe.call({
 				method: "swynix_mes.swynix_mes.api.ppc_caster_kiosk.preview_plan_insertion",
 				args: {
-					caster: values.caster,
+					caster: values.casting_workstation,
 					start_datetime: values.start_datetime,
 					end_datetime: values.end_datetime
 				},
@@ -647,7 +644,7 @@ function open_create_plan_dialog() {
 	});
 
 	// Filter Caster field to Casting workstations
-	d.fields_dict.caster.get_query = function() {
+	d.fields_dict.casting_workstation.get_query = function() {
 		return { filters: { workstation_type: 'Casting' } };
 	};
 
@@ -666,9 +663,6 @@ function open_create_plan_dialog() {
 		return { filters: { item_group: 'Alloy' } };
 	};
 
-	// Charge Mix Recipe: filter by selected alloy
-	if (d.fields_dict.charge_mix_recipe) {
-		d.fields_dict.charge_mix_recipe.get_query = function() {
 			const alloy = d.get_value('alloy');
 			const filters = alloy ? { alloy: alloy, is_active: 1 } : { is_active: 1 };
 			return { filters };
@@ -682,14 +676,12 @@ function open_create_plan_dialog() {
 		frappe.call({
 			method: "frappe.client.get_list",
 			args: {
-				doctype: "Charge Mix Ratio",
 				filters: { alloy: alloy, is_active: 1 },
 				fields: ["name"],
 				limit_page_length: 1
 			},
 			callback: r => {
 				if (r.message && r.message.length) {
-					d.set_value('charge_mix_recipe', r.message[0].name);
 				}
 			}
 		});
@@ -721,8 +713,8 @@ function do_create_plan_from_dialog(dialog, values) {
 				indicator: 'green'
 			}, 5);
 			// If caster changed inside dialog, sync header & refresh
-			if (values.caster && values.caster !== current_caster) {
-				current_caster = values.caster;
+			if (values.casting_workstation && values.casting_workstation !== current_caster) {
+				current_caster = values.casting_workstation;
 				$("#caster_select").val(current_caster);
 			}
 			refresh_events();

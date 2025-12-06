@@ -495,7 +495,7 @@ function render_batch_header(doc, batch, plan, recipe) {
 	var width_mm = doc.planned_width_mm || (plan && plan.planned_width_mm) || "-";
 	var gauge_mm = doc.planned_gauge_mm || (plan && plan.planned_gauge_mm) || "-";
 	var temper = doc.temper || (plan && plan.temper) || "-";
-	var recipe_name = doc.charge_mix_recipe || (plan && plan.charge_mix_recipe) || "-";
+	var recipe_name = doc.charge_mix_ratio || (plan && plan.charge_mix_ratio) || "-";
 	
 	var planned = planned_weight ? flt(planned_weight, 3) + " MT" : "-";
 	var charged = doc.charged_weight_mt ? flt(doc.charged_weight_mt, 3) + " MT" : "-";
@@ -647,7 +647,7 @@ function render_recipe_targets(recipe, items, batch, plan) {
 		html += '</div>';
 	} else {
 		html += '<div style="margin-bottom: 15px; padding: 12px; background: #f3f4f6; border-radius: 6px; color: #6c757d; font-size: 12px;">';
-		html += '<i class="fa fa-info-circle"></i> No Charge Mix Recipe targets found for this batch.';
+		html += '<i class="fa fa-info-circle"></i> No Charge Mix Ratio targets found for this batch.';
 		html += '</div>';
 	}
 	
@@ -1507,8 +1507,8 @@ async function open_new_batch_dialog() {
 				options: "Item"
 			},
 			{
-				fieldname: "charge_mix_recipe",
-				label: __("Charge Mix Recipe"),
+				fieldname: "charge_mix_ratio",
+				label: __("Charge Mix Ratio"),
 				fieldtype: "Link",
 				options: "Charge Mix Ratio"
 			},
@@ -1547,7 +1547,7 @@ async function open_new_batch_dialog() {
 		return { filters: { item_group: "Product" } };
 	};
 
-	d.fields_dict.charge_mix_recipe.get_query = function() {
+	d.fields_dict.charge_mix_ratio.get_query = function() {
 		var alloy = d.get_value("alloy");
 		var filters = { is_active: 1, docstatus: 1 };
 		if (alloy) filters.alloy = alloy;

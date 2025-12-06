@@ -4,7 +4,7 @@
 frappe.ui.form.on("PPC Casting Plan", {
 	setup(frm) {
 		// Filter caster: only Workstations with workstation_type = 'Casting'
-		frm.set_query("caster", function() {
+		frm.set_query("casting_workstation", function() {
 			return {
 				filters: {
 					workstation_type: "Casting"
@@ -39,8 +39,6 @@ frappe.ui.form.on("PPC Casting Plan", {
 			};
 		});
 
-		// Filter charge_mix_recipe to show only active, submitted CMRs for selected alloy
-		frm.set_query("charge_mix_recipe", function() {
 			let filters = {
 				is_active: 1,
 				docstatus: 1
@@ -114,7 +112,6 @@ frappe.ui.form.on("PPC Casting Plan", {
 			frm.set_value("temper", null);
 			frm.set_value("final_gauge_mm", null);
 			frm.set_value("planned_weight_mt", null);
-			frm.set_value("charge_mix_recipe", null);
 			frm.set_value("customer", null);
 			frm.clear_table("sales_orders");
 			frm.refresh_field("sales_orders");
@@ -164,11 +161,8 @@ frappe.ui.form.on("PPC Casting Plan", {
 	},
 
 	alloy(frm) {
-		// Clear and refresh charge_mix_recipe when alloy changes
 		if (!frm.doc.alloy) {
-			frm.set_value("charge_mix_recipe", null);
 		}
-		frm.set_query("charge_mix_recipe", function() {
 			let filters = {
 				is_active: 1,
 				docstatus: 1
@@ -224,7 +218,6 @@ function toggle_sections(frm) {
 	frm.toggle_display("temper", is_casting);
 	frm.toggle_display("final_gauge_mm", is_casting);
 	frm.toggle_display("planned_weight_mt", is_casting);
-	frm.toggle_display("charge_mix_recipe", is_casting);
 
 	// Customer section
 	frm.toggle_display("customer_section", is_casting);

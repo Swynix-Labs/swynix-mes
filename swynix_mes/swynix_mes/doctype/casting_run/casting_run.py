@@ -1,222 +1,215 @@
 # Copyright (c) 2025, Swynix and contributors
 # For license information, please see license.txt
 
-"""
-Casting Run Document Controller
-
-Handles:
-- Run lifecycle (Planned → Casting → Completed/Aborted)
-- Coil tracking and totals calculation
-- Status synchronization with PPC Casting Plan
-- Validation of single active run per caster
-"""
-
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, now_datetime
+from frappe.utils import now_datetime, get_datetime
 
 
 class CastingRun(Document):
-    def validate(self):
-        self.validate_no_duplicate_active_run()
-        self.set_furnace_from_batch()
-        self.update_totals_from_coils()
-    
-    def on_update(self):
-        self.sync_to_casting_plan()
-    
-    def after_insert(self):
-        # Update plan status when run is created
-        self.sync_to_casting_plan()
-    
-    def update_totals_from_coils(self):
-        """Update totals from linked Mother Coils (not child table)"""
-        coils = frappe.get_all(
-            "Mother Coil",
-            filters={"casting_run": self.name},
-            fields=["actual_weight_mt", "is_scrap", "scrap_weight_mt"]
-        )
-        
-        total_weight = 0
-        scrap_weight = 0
-        
-        for c in coils:
-            weight = flt(c.actual_weight_mt or 0)
-            total_weight += weight
-            if c.is_scrap:
-                scrap_weight += flt(c.scrap_weight_mt or c.actual_weight_mt or 0)
-        
-        self.total_coils = len(coils)
-        self.total_cast_weight = flt(total_weight, 3)
-        self.total_scrap_weight = flt(scrap_weight, 3)
-    
-    def sync_to_casting_plan(self):
-        """Sync run status to linked PPC Casting Plan"""
-        if not self.casting_plan:
-            return
-        
-        try:
-            plan = frappe.get_doc("PPC Casting Plan", self.casting_plan)
-            
-            # Don't update cancelled plans
-            if plan.docstatus == 2:
-                return
-            
-            updates = {}
-            
-            if self.status == "Casting":
-                if plan.status in ["Metal Ready", "Melting", "Planned", "Released"]:
-                    updates["status"] = "Casting"
-                if self.run_start_time and not plan.casting_start:
-                    updates["casting_start"] = self.run_start_time
-            
-            elif self.status == "Completed":
-                # Check for approved coils
-                approved_count = frappe.db.count("Mother Coil", {
-                    "casting_run": self.name,
-                    "qc_status": "Approved",
-                    "is_scrap": 0
-                })
-                
-                if approved_count > 0 or self.total_coils > 0:
-                    updates["status"] = "Coils Complete"
-                
-                if self.run_end_time:
-                    updates["casting_end"] = self.run_end_time
-                    updates["actual_end"] = self.run_end_time
-                
-                # Update final weight
-                if self.total_cast_weight:
-                    updates["final_weight_mt"] = flt(self.total_cast_weight - self.total_scrap_weight, 3)
-            
-            elif self.status == "Aborted":
-                updates["status"] = "Not Produced"
-                if self.run_end_time:
-                    updates["casting_end"] = self.run_end_time
-            
-            if updates:
-                for field, value in updates.items():
-                    plan.db_set(field, value, update_modified=True)
-                    
-        except Exception as e:
-            frappe.log_error(
-                title="Casting Run → Plan Sync Error",
-                message=f"Error syncing run {self.name} to plan {self.casting_plan}: {str(e)}"
-            )
-    
-    def validate_no_duplicate_active_run(self):
-        """Ensure only one active casting run per caster"""
-        if self.status == "Casting":
-            existing = frappe.db.exists("Casting Run", {
-                "caster": self.caster,
-                "status": "Casting",
-                "name": ("!=", self.name)
-            })
-            if existing:
-                frappe.throw(_(
-                    "There is already an active casting run ({0}) on caster {1}. "
-                    "Please complete or abort that run first."
-                ).format(existing, self.caster))
-    
-    def set_furnace_from_batch(self):
-        """Set furnace from melting batch if not set"""
-        if self.melting_batch and not self.furnace:
-            self.furnace = frappe.db.get_value("Melting Batch", self.melting_batch, "furnace")
-    
-    def update_totals(self):
-        """
-        Update total coils and weights from child table.
-        Legacy method - now also calls update_totals_from_coils for direct Mother Coil lookup.
-        """
-        total_coils = 0
-        total_cast_weight = 0
-        total_scrap_weight = 0
-        
-        for row in self.coils or []:
-            total_coils += 1
-            if row.mother_coil:
-                coil_data = frappe.db.get_value("Mother Coil", row.mother_coil, 
-                    ["actual_weight_mt", "is_scrap", "scrap_weight_mt"], as_dict=True)
-                if coil_data:
-                    if coil_data.is_scrap:
-                        total_scrap_weight += flt(coil_data.scrap_weight_mt or coil_data.actual_weight_mt)
-                    else:
-                        total_cast_weight += flt(coil_data.actual_weight_mt)
-        
-        # If child table is empty, also check direct links
-        if total_coils == 0:
-            self.update_totals_from_coils()
-        else:
-            self.total_coils = total_coils
-            self.total_cast_weight = flt(total_cast_weight, 3)
-            self.total_scrap_weight = flt(total_scrap_weight, 3)
-    
-    def update_casting_plan_status(self):
-        """
-        Legacy method - now calls sync_to_casting_plan.
-        """
-        self.sync_to_casting_plan()
-    
-    def add_coil(self, mother_coil_name):
-        """Add a mother coil to this run"""
-        # Check if coil already exists in run
-        existing = [c for c in self.coils if c.mother_coil == mother_coil_name]
-        if existing:
-            return existing[0]
-        
-        # Get next sequence
-        next_seq = len(self.coils) + 1 if self.coils else 1
-        
-        # Add to child table
-        row = self.append("coils", {
-            "sequence": next_seq,
-            "mother_coil": mother_coil_name
-        })
-        
-        self.save()
-        return row
-    
-    def start_casting(self):
-        """Start the casting run"""
-        if self.status != "Planned":
-            frappe.throw(_("Cannot start casting - run is not in Planned status"))
-        
-        self.status = "Casting"
-        self.run_start_time = frappe.utils.now_datetime()
-        self.save()
-        
-        return self
-    
-    def complete_run(self):
-        """Complete the casting run"""
-        if self.status != "Casting":
-            frappe.throw(_("Cannot complete - run is not in Casting status"))
-        
-        # Check for pending QC coils
-        pending_coils = [c for c in self.coils if c.qc_status == "Pending"]
-        if pending_coils:
-            frappe.msgprint(_(
-                "Warning: {0} coil(s) still have pending QC status"
-            ).format(len(pending_coils)), indicator="orange")
-        
-        self.status = "Completed"
-        self.run_end_time = frappe.utils.now_datetime()
-        self.save()
-        
-        return self
-    
-    def abort_run(self, reason=None):
-        """Abort the casting run"""
-        self.status = "Aborted"
-        self.run_end_time = frappe.utils.now_datetime()
-        if reason:
-            self.remarks = (self.remarks or "") + f"\nAborted: {reason}"
-        self.save()
-        
-        return self
+	def validate(self):
+		"""Validation logic for Casting Run"""
+		self.validate_workstation_types()
+		self.validate_single_active_run()
+		self.calculate_totals()
+	
+	def validate_workstation_types(self):
+		"""Ensure caster is Caster type and furnace is Furnace type"""
+		if self.caster:
+			caster_type = frappe.db.get_value("Workstation", self.caster, "workstation_type")
+			if caster_type != "Caster":
+				frappe.throw(_(f"Caster '{self.caster}' must be of type 'Caster', found '{caster_type}'"))
+		
+		if self.furnace:
+			furnace_type = frappe.db.get_value("Workstation", self.furnace, "workstation_type")
+			if furnace_type != "Furnace":
+				frappe.throw(_(f"Furnace '{self.furnace}' must be of type 'Furnace', found '{furnace_type}'"))
+	
+	def validate_single_active_run(self):
+		"""Ensure only one active casting run per caster"""
+		if self.status == "Casting" and self.caster:
+			# Check for other active runs on this caster
+			active_runs = frappe.db.get_all(
+				"Casting Run",
+				filters={
+					"caster": self.caster,
+					"status": "Casting",
+					"name": ["!=", self.name or "New"],
+					"docstatus": ["<", 2]
+				},
+				fields=["name"],
+				limit=1
+			)
+			
+			if active_runs:
+				frappe.throw(
+					_("Caster '{0}' already has an active casting run: {1}. "
+					  "Please complete or abort that run before starting a new one.").format(
+						self.caster, active_runs[0].name
+					)
+				)
+	
+	def calculate_totals(self):
+		"""Calculate totals from coils child table"""
+		if not self.coils:
+			self.total_coils = 0
+			self.total_cast_weight = 0
+			self.total_scrap_weight = 0
+			return
+		
+		self.total_coils = len(self.coils)
+		self.total_cast_weight = sum([coil.weight_mt or 0 for coil in self.coils])
+		self.total_scrap_weight = sum([coil.scrap_weight_mt or 0 for coil in self.coils if coil.is_scrap])
 
 
+@frappe.whitelist()
+def start_casting_run(casting_plan, melting_batch, caster, furnace=None, operator=None):
+	"""
+	Start a new casting run
+	
+	Args:
+		casting_plan: Casting Plan name
+		melting_batch: Melting Batch name
+		caster: Caster workstation
+		furnace: Furnace workstation (optional)
+		operator: Operator name (optional)
+	
+	Returns:
+		dict with casting_run name
+	"""
+	# Validate inputs
+	if not casting_plan:
+		frappe.throw(_("Casting Plan is required"))
+	if not melting_batch:
+		frappe.throw(_("Melting Batch is required"))
+	if not caster:
+		frappe.throw(_("Caster is required"))
+	
+	# Check for active run on this caster
+	active_run = frappe.db.get_value(
+		"Casting Run",
+		{"caster": caster, "status": "Casting", "docstatus": ["<", 2]},
+		"name"
+	)
+	
+	if active_run:
+		frappe.throw(_("Caster '{0}' already has an active casting run: {1}").format(caster, active_run))
+	
+	# Get furnace from melting batch if not provided
+	if not furnace:
+		furnace = frappe.db.get_value("Melting Batch", melting_batch, "furnace")
+	
+	# Create new Casting Run
+	casting_run = frappe.new_doc("Casting Run")
+	casting_run.casting_plan = casting_plan
+	casting_run.melting_batch = melting_batch
+	casting_run.caster = caster
+	casting_run.furnace = furnace
+	casting_run.status = "Casting"
+	casting_run.run_start_time = now_datetime()
+	casting_run.run_date = now_datetime().date()
+	
+	casting_run.insert(ignore_permissions=True)
+	
+	# Update Casting Plan status
+	plan = frappe.get_doc("PPC Casting Plan", casting_plan)
+	plan.status = "Casting"
+	plan.casting_start = casting_run.run_start_time
+	if not plan.actual_start:
+		plan.actual_start = casting_run.run_start_time
+	plan.save(ignore_permissions=True)
+	
+	frappe.db.commit()
+	
+	return {
+		"casting_run": casting_run.name,
+		"message": f"Casting run {casting_run.name} started successfully"
+	}
 
 
+@frappe.whitelist()
+def stop_casting_run(casting_run_name):
+	"""
+	Stop/Complete a casting run
+	
+	Args:
+		casting_run_name: Name of the casting run
+	
+	Returns:
+		dict with status
+	"""
+	casting_run = frappe.get_doc("Casting Run", casting_run_name)
+	
+	if casting_run.status != "Casting":
+		frappe.throw(_("Casting run is not active"))
+	
+	casting_run.status = "Completed"
+	casting_run.run_end_time = now_datetime()
+	casting_run.save(ignore_permissions=True)
+	
+	# Update Casting Plan
+	if casting_run.casting_plan:
+		plan = frappe.get_doc("PPC Casting Plan", casting_run.casting_plan)
+		plan.casting_end = casting_run.run_end_time
+		plan.save(ignore_permissions=True)
+	
+	frappe.db.commit()
+	
+	return {
+		"message": f"Casting run {casting_run_name} completed successfully"
+	}
 
+
+@frappe.whitelist()
+def create_temporary_coil(casting_run_name, weight_mt, width_mm=None, gauge_mm=None, length_m=None, surface_observation=None, remarks=None):
+	"""
+	Create a temporary coil during casting
+	
+	Args:
+		casting_run_name: Name of the casting run
+		weight_mt: Weight in MT
+		width_mm: Width in mm (optional)
+		gauge_mm: Gauge in mm (optional)
+		length_m: Length in meters (optional)
+		surface_observation: Surface observations (optional)
+		remarks: Remarks (optional)
+	
+	Returns:
+		dict with temporary_coil name
+	"""
+	casting_run = frappe.get_doc("Casting Run", casting_run_name)
+	
+	# Create Temporary Coil
+	temp_coil = frappe.new_doc("Temporary Coil")
+	temp_coil.casting_run = casting_run.name
+	temp_coil.casting_plan = casting_run.casting_plan
+	temp_coil.melting_batch = casting_run.melting_batch
+	temp_coil.caster = casting_run.caster
+	temp_coil.furnace = casting_run.furnace
+	
+	# Get product details from casting plan
+	if casting_run.casting_plan:
+		plan = frappe.get_doc("PPC Casting Plan", casting_run.casting_plan)
+		temp_coil.alloy = plan.alloy
+		temp_coil.product_item = plan.product_item
+		temp_coil.temper = plan.temper
+	
+	# Set dimensions
+	temp_coil.weight_mt = weight_mt
+	temp_coil.width_mm = width_mm
+	temp_coil.gauge_mm = gauge_mm
+	temp_coil.length_m = length_m
+	temp_coil.surface_observation = surface_observation
+	temp_coil.remarks = remarks
+	temp_coil.temp_status = "Pending QC"
+	
+	temp_coil.insert(ignore_permissions=True)
+	
+	frappe.db.commit()
+	
+	return {
+		"temporary_coil": temp_coil.name,
+		"temp_coil_id": temp_coil.temp_coil_id,
+		"message": f"Temporary coil {temp_coil.temp_coil_id} created successfully"
+	}

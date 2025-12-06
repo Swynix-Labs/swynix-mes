@@ -95,7 +95,7 @@ def get_cast_plans_for_furnace(furnace, for_date=None):
             product_item,
             alloy,
             temper,
-            charge_mix_recipe,
+            charge_mix_ratio,
             planned_width_mm,
             planned_gauge_mm,
             planned_weight_mt,
@@ -145,7 +145,7 @@ def start_batch_from_cast_plan(plan_name):
     batch.alloy = getattr(plan, "alloy", None)
     batch.product_item = getattr(plan, "product_item", None)
     batch.temper = getattr(plan, "temper", None)
-    batch.charge_mix_recipe = getattr(plan, "charge_mix_recipe", None)
+    batch.charge_mix_ratio = getattr(plan, "charge_mix_ratio", None)
     batch.planned_weight_mt = getattr(plan, "planned_weight_mt", None)
     batch.planned_width_mm = getattr(plan, "planned_width_mm", None)
     batch.planned_gauge_mm = getattr(plan, "planned_gauge_mm", None)
@@ -260,7 +260,7 @@ def create_melting_batch(data):
       - furnace (required)
       - alloy
       - product_item
-      - charge_mix_recipe
+      - charge_mix_ratio
       - planned_weight_mt
       - ppc_casting_plan
     """
@@ -277,7 +277,7 @@ def create_melting_batch(data):
     doc.furnace = data.furnace
     doc.alloy = data.get("alloy")
     doc.product_item = data.get("product_item")
-    doc.charge_mix_recipe = data.get("charge_mix_recipe")
+    doc.charge_mix_ratio = data.get("charge_mix_ratio")
     doc.planned_weight_mt = flt(data.get("planned_weight_mt"))
     doc.plan_date = getdate()
     doc.status = "Charging"
@@ -661,7 +661,7 @@ def get_batch_detail(batch_name):
                 "final_width_mm": getattr(plan, "final_width_mm", None),
                 "final_gauge_mm": getattr(plan, "final_gauge_mm", None),
                 "planned_weight_mt": getattr(plan, "planned_weight_mt", None),
-                "charge_mix_recipe": getattr(plan, "charge_mix_recipe", None),
+                "charge_mix_ratio": getattr(plan, "charge_mix_ratio", None),
                 "customer": getattr(plan, "customer", None),
                 "temper": getattr(plan, "temper", None),
             }
@@ -669,9 +669,9 @@ def get_batch_detail(batch_name):
             plan_info = None
     
     # ---------- Determine which recipe to use ----------
-    recipe_name = getattr(doc, "charge_mix_recipe", None)
-    if not recipe_name and plan_info and plan_info.get("charge_mix_recipe"):
-        recipe_name = plan_info["charge_mix_recipe"]
+    recipe_name = getattr(doc, "charge_mix_ratio", None)
+    if not recipe_name and plan_info and plan_info.get("charge_mix_ratio"):
+        recipe_name = plan_info["charge_mix_ratio"]
 
     recipe_info = None
     recipe_items = []
@@ -746,7 +746,7 @@ def get_batch_detail(batch_name):
         "alloy": doc.alloy,
         "product_item": doc.product_item,
         "temper": getattr(doc, "temper", None),
-        "charge_mix_recipe": recipe_name,
+        "charge_mix_ratio": recipe_name,
         "plan_date": str(doc.plan_date) if doc.plan_date else None,
         "planned_width_mm": getattr(doc, "planned_width_mm", None),
         "planned_gauge_mm": getattr(doc, "planned_gauge_mm", None),
@@ -779,7 +779,7 @@ def get_batch_detail(batch_name):
         "alloy": doc.alloy,
         "product_item": doc.product_item,
         "temper": getattr(doc, "temper", None),
-        "charge_mix_recipe": recipe_name,
+        "charge_mix_ratio": recipe_name,
         "plan_date": str(doc.plan_date) if doc.plan_date else None,
         "planned_width_mm": getattr(doc, "planned_width_mm", None),
         "planned_gauge_mm": getattr(doc, "planned_gauge_mm", None),

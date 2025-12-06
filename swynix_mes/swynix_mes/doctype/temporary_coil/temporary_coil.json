@@ -1,0 +1,298 @@
+{
+    "actions": [],
+    "allow_rename": 0,
+    "autoname": "naming_series:",
+    "creation": "2025-12-06 08:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "links_section",
+        "naming_series",
+        "temp_coil_id",
+        "temp_status",
+        "column_break_link",
+        "casting_plan",
+        "casting_run",
+        "melting_batch",
+        "product_section",
+        "alloy",
+        "product_item",
+        "temper",
+        "column_break_prod",
+        "caster",
+        "furnace",
+        "cast_date",
+        "dimensions_section",
+        "width_mm",
+        "gauge_mm",
+        "column_break_dim",
+        "weight_mt",
+        "length_m",
+        "observation_section",
+        "surface_observation",
+        "remarks",
+        "conversion_section",
+        "converted_to_mother_coil",
+        "mother_coil",
+        "column_break_conv",
+        "conversion_date",
+        "amended_from"
+    ],
+    "fields": [
+        {
+            "fieldname": "links_section",
+            "fieldtype": "Section Break",
+            "label": "Links"
+        },
+        {
+            "default": "TMP-.YYYY.-.#####",
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "hidden": 1,
+            "label": "Naming Series",
+            "options": "TMP-.YYYY.-.#####",
+            "reqd": 1
+        },
+        {
+            "fieldname": "temp_coil_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Temp Coil ID",
+            "read_only": 1,
+            "description": "Temporary ID used on floor before QC approval"
+        },
+        {
+            "default": "Pending QC",
+            "fieldname": "temp_status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Status",
+            "options": "Pending QC\\nConverted to Final\\nScrapped\\nRemelt"
+        },
+        {
+            "fieldname": "column_break_link",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "casting_plan",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Casting Plan",
+            "options": "PPC Casting Plan",
+            "reqd": 1
+        },
+        {
+            "fieldname": "casting_run",
+            "fieldtype": "Link",
+            "in_standard_filter": 1,
+            "label": "Casting Run",
+            "options": "Casting Run",
+            "reqd": 1
+        },
+        {
+            "fieldname": "melting_batch",
+            "fieldtype": "Link",
+            "in_standard_filter": 1,
+            "label": "Melting Batch",
+            "options": "Melting Batch",
+            "reqd": 1
+        },
+        {
+            "fieldname": "product_section",
+            "fieldtype": "Section Break",
+            "label": "Product Details"
+        },
+        {
+            "fieldname": "alloy",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Alloy",
+            "options": "Item",
+            "reqd": 1
+        },
+        {
+            "fieldname": "product_item",
+            "fieldtype": "Link",
+            "label": "Product Item",
+            "options": "Item",
+            "reqd": 1
+        },
+        {
+            "fieldname": "temper",
+            "fieldtype": "Link",
+            "label": "Temper",
+            "options": "Temper",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_prod",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "caster",
+            "fieldtype": "Link",
+            "in_standard_filter": 1,
+            "label": "Caster",
+            "options": "Workstation",
+            "reqd": 1
+        },
+        {
+            "fieldname": "furnace",
+            "fieldtype": "Link",
+            "label": "Furnace",
+            "options": "Workstation",
+            "reqd": 1
+        },
+        {
+            "default": "Today",
+            "fieldname": "cast_date",
+            "fieldtype": "Date",
+            "in_list_view": 1,
+            "label": "Cast Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "dimensions_section",
+            "fieldtype": "Section Break",
+            "label": "Dimensions"
+        },
+        {
+            "fieldname": "width_mm",
+            "fieldtype": "Float",
+            "label": "Width (mm)",
+            "precision": "2"
+        },
+        {
+            "fieldname": "gauge_mm",
+            "fieldtype": "Float",
+            "label": "Gauge (mm)",
+            "precision": "3"
+        },
+        {
+            "fieldname": "column_break_dim",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "weight_mt",
+            "fieldtype": "Float",
+            "label": "Weight (MT)",
+            "precision": "3"
+        },
+        {
+            "fieldname": "length_m",
+            "fieldtype": "Float",
+            "label": "Length (m)",
+            "precision": "2"
+        },
+        {
+            "fieldname": "observation_section",
+            "fieldtype": "Section Break",
+            "label": "Observations"
+        },
+        {
+            "fieldname": "surface_observation",
+            "fieldtype": "Small Text",
+            "label": "Surface Observation"
+        },
+        {
+            "fieldname": "remarks",
+            "fieldtype": "Small Text",
+            "label": "Remarks"
+        },
+        {
+            "collapsible": 1,
+            "fieldname": "conversion_section",
+            "fieldtype": "Section Break",
+            "label": "Conversion to Final Coil"
+        },
+        {
+            "default": "0",
+            "fieldname": "converted_to_mother_coil",
+            "fieldtype": "Check",
+            "label": "Converted to Mother Coil",
+            "read_only": 1
+        },
+        {
+            "depends_on": "converted_to_mother_coil",
+            "fieldname": "mother_coil",
+            "fieldtype": "Link",
+            "label": "Mother Coil",
+            "options": "Mother Coil",
+            "read_only": 1
+        },
+        {
+            "fieldname": "column_break_conv",
+            "fieldtype": "Column Break"
+        },
+        {
+            "depends_on": "converted_to_mother_coil",
+            "fieldname": "conversion_date",
+            "fieldtype": "Datetime",
+            "label": "Conversion Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Temporary Coil",
+            "print_hide": 1,
+            "read_only": 1
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 0,
+    "links": [],
+    "modified": "2025-12-06 08:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Swynix MES",
+    "name": "Temporary Coil",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Manufacturing Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Manufacturing User",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "search_fields": "temp_coil_id,alloy,casting_plan",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "title_field": "temp_coil_id",
+    "track_changes": 1
+}

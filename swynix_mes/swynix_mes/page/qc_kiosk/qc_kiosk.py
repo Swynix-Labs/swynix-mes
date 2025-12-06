@@ -106,7 +106,7 @@ def get_pending_samples(filters=None):
         filters=batch_filters,
         fields=[
             "name", "melting_batch_id", "alloy", "product_item", 
-            "furnace", "temper", "charge_mix_recipe", "status",
+            "furnace", "temper", "charge_mix_ratio", "status",
             "ppc_casting_plan", "qc_status"
         ],
         order_by="creation desc",
@@ -256,7 +256,7 @@ def get_pending_samples(filters=None):
             "accm_name": accm_name,
             "casting_plan": batch.ppc_casting_plan,
             "temper": batch.temper,
-            "recipe": batch.charge_mix_recipe,
+            "recipe": batch.charge_mix_ratio,
             "batch_status": batch.status,
             "batch_qc_status": batch.qc_status
         })
@@ -322,7 +322,7 @@ def get_sample_details(batch, sample_id):
         "product": batch_doc.product_item,
         "furnace": batch_doc.furnace,
         "temper": batch_doc.temper,
-        "recipe": batch_doc.charge_mix_recipe,
+        "recipe": batch_doc.charge_mix_ratio,
         "casting_plan": batch_doc.ppc_casting_plan,
         "status": batch_doc.status,
         "qc_status": batch_doc.qc_status

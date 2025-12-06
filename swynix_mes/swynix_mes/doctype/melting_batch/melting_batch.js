@@ -24,8 +24,8 @@ frappe.ui.form.on("Melting Batch", {
 			};
 		});
 
-		// Filter charge_mix_recipe based on selected alloy
-		frm.set_query("charge_mix_recipe", function() {
+		// Filter charge_mix_ratio based on selected alloy
+		frm.set_query("charge_mix_ratio", function() {
 			return {
 				query: "swynix_mes.swynix_mes.doctype.melting_batch.melting_batch.get_charge_mix_for_alloy",
 				filters: {
@@ -56,14 +56,14 @@ frappe.ui.form.on("Melting Batch", {
 	},
 
 	alloy(frm) {
-		// Clear charge_mix_recipe when alloy changes
-		if (frm.doc.charge_mix_recipe) {
+		// Clear charge_mix_ratio when alloy changes
+		if (frm.doc.charge_mix_ratio) {
 			// Verify the recipe is for the selected alloy
-			frappe.db.get_value("Charge Mix Ratio", frm.doc.charge_mix_recipe, "alloy", (r) => {
+			frappe.db.get_value("Charge Mix Ratio", frm.doc.charge_mix_ratio, "alloy", (r) => {
 				if (r && r.alloy !== frm.doc.alloy) {
-					frm.set_value("charge_mix_recipe", null);
+					frm.set_value("charge_mix_ratio", null);
 					frappe.show_alert({
-						message: __("Charge Mix Recipe cleared as it doesn't match the selected Alloy"),
+						message: __("Charge Mix Ratio cleared as it doesn't match the selected Alloy"),
 						indicator: "orange"
 					});
 				}

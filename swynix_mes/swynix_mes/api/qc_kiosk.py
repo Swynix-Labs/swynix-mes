@@ -840,7 +840,7 @@ def get_sample_detail(sample_name):
             "alloy": batch.alloy,
             "product_item": batch.product_item,
             "temper": batch.temper,
-            "charge_mix_recipe": batch.charge_mix_recipe,
+            "charge_mix_ratio": batch.charge_mix_ratio,
             "status": batch.status,
             "qc_status": batch.qc_status
         },

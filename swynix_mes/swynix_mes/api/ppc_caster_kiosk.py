@@ -61,7 +61,7 @@ def compute_shift_window_and_delta(caster, new_start, new_end):
 	first_future = frappe.db.get_value(
 		"PPC Casting Plan",
 		{
-			"caster": caster,
+			"casting_workstation": caster,
 			"status": ["in", SHIFTABLE_STATUSES],
 			"start_datetime": [">=", new_start],
 		},
@@ -103,7 +103,7 @@ def shift_future_plans(caster, from_datetime, delta_seconds, exclude_name=None):
 	future_plans = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"status": ["in", SHIFTABLE_STATUSES],  # Only not-started plans
 			"start_datetime": [">=", from_datetime],
 		},
@@ -145,7 +145,7 @@ def ensure_no_overlap_with_locked(caster, start_dt, end_dt, exclude_name=None):
 	overlap = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"status": ["in", LOCKED_STATUSES],
 			"docstatus": ["<", 2],  # Not cancelled
 		},
@@ -202,7 +202,7 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 	plans = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2],
 		},
@@ -268,7 +268,7 @@ def preview_plan_insertion(caster, start_datetime, end_datetime):
 		affected = frappe.get_all(
 			"PPC Casting Plan",
 			filters={
-				"caster": caster,
+				"casting_workstation": caster,
 				"status": ["in", SHIFTABLE_STATUSES],
 				"docstatus": ["<", 2],
 				"start_datetime": [">=", shift_from],
@@ -336,7 +336,7 @@ def check_caster_plan_impact(caster, start_datetime):
 	plans = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"status": ["in", SHIFTABLE_STATUSES],  # Only not-started plans
 			"docstatus": ["<", 2],
 			"start_datetime": [">=", start_dt],
@@ -365,7 +365,7 @@ def get_plans_for_day(caster, date):
 	return frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"plan_date": date,
 			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]  # Not cancelled
@@ -392,7 +392,6 @@ def get_plans_for_day(caster, date):
 			"final_width_mm",
 			"final_gauge_mm",
 			"final_weight_mt",
-			"charge_mix_recipe",
 			"status",
 			"downtime_type",
 			"downtime_reason",
@@ -427,7 +426,7 @@ def get_plan_for_range(caster, start, end):
 	plans = frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			# Overlap detection: event starts before view ends AND event ends after view starts
 			"start_datetime": ["<", end],
 			"end_datetime": [">", start],
@@ -437,7 +436,7 @@ def get_plan_for_range(caster, start, end):
 		fields=[
 			"name",
 			"plan_type",
-			"caster",
+			"casting_workstation",
 			"furnace",
 			"start_datetime",
 			"end_datetime",
@@ -458,7 +457,6 @@ def get_plan_for_range(caster, start, end):
 			"final_width_mm",
 			"final_gauge_mm",
 			"final_weight_mt",
-			"charge_mix_recipe",
 			"downtime_type",
 			"status",
 			"remarks",
@@ -481,7 +479,7 @@ def get_plans_for_range(caster, from_date, to_date):
 	return frappe.get_all(
 		"PPC Casting Plan",
 		filters={
-			"caster": caster,
+			"casting_workstation": caster,
 			"plan_date": ["between", [from_date, to_date]],
 			"status": ["not in", ["Not Produced"]],
 			"docstatus": ["<", 2]
@@ -509,7 +507,6 @@ def get_plans_for_range(caster, from_date, to_date):
 			"final_width_mm",
 			"final_gauge_mm",
 			"final_weight_mt",
-			"charge_mix_recipe",
 			"status",
 			"downtime_type",
 			"downtime_reason",
@@ -538,7 +535,7 @@ def create_plan(data):
 	data = frappe._dict(data)
 
 	# Required field validation
-	if not data.caster:
+	if not data.casting_workstation:
 		frappe.throw(_("Caster is required"))
 	if not data.plan_type:
 		frappe.throw(_("Plan Type is required"))
@@ -561,13 +558,13 @@ def create_plan(data):
 	ensure_not_in_past(start_dt, label="plan")
 
 	# 1) Ensure we don't overlap any locked plan
-	ensure_no_overlap_with_locked(data.caster, start_dt, end_dt, exclude_name=None)
+	ensure_no_overlap_with_locked(data.casting_workstation, start_dt, end_dt, exclude_name=None)
 
 	# 2) Compute smart shift window & amount
 	# This finds the first shiftable plan >= start_dt and computes
 	# delta = max(0, end_dt - first_plan_start)
 	shift_from, delta_seconds = compute_shift_window_and_delta(
-		caster=data.caster,
+		caster=data.casting_workstation,
 		new_start=start_dt,
 		new_end=end_dt,
 	)
@@ -575,7 +572,7 @@ def create_plan(data):
 	# 3) 🔁 Shift existing future plans only if needed
 	if shift_from and delta_seconds > 0:
 		shift_future_plans(
-			caster=data.caster,
+			caster=data.casting_workstation,
 			from_datetime=shift_from,
 			delta_seconds=delta_seconds,
 			exclude_name=None,
@@ -585,7 +582,7 @@ def create_plan(data):
 	doc = frappe.new_doc("PPC Casting Plan")
 
 	# Common fields
-	doc.caster = data.caster
+	doc.casting_workstation = data.casting_workstation
 	doc.plan_type = data.plan_type
 	doc.start_datetime = start_dt
 	doc.end_datetime = end_dt
@@ -630,8 +627,6 @@ def create_plan(data):
 			doc.final_weight_mt = data.final_weight_mt
 
 		# Charge mix recipe
-		if data.charge_mix_recipe:
-			doc.charge_mix_recipe = data.charge_mix_recipe
 
 	# Downtime-specific fields
 	elif data.plan_type == "Downtime":
@@ -747,7 +742,7 @@ def export_plans(caster, start, end, format="xlsx"):
 	columns = [
 		"Name",
 		"Plan Type",
-		"Caster",
+		"Casting",
 		"Status",
 		"Start Datetime",
 		"End Datetime",
@@ -763,7 +758,7 @@ def export_plans(caster, start, end, format="xlsx"):
 		"Final Width (mm)",
 		"Final Gauge (mm)",
 		"Final Weight (MT)",
-		"Charge Mix Recipe",
+		"Charge Mix Ratio",
 		"Downtime Type",
 		"Melting Batch",
 		"Mother Coil",
@@ -775,7 +770,7 @@ def export_plans(caster, start, end, format="xlsx"):
 		row = [
 			p.get("name"),
 			p.get("plan_type"),
-			p.get("caster") or caster,
+			p.get("casting_workstation") or caster,
 			p.get("status"),
 			str(p.get("start_datetime") or ""),
 			str(p.get("end_datetime") or ""),
@@ -791,7 +786,6 @@ def export_plans(caster, start, end, format="xlsx"):
 			p.get("final_width_mm"),
 			p.get("final_gauge_mm"),
 			p.get("final_weight_mt"),
-			p.get("charge_mix_recipe"),
 			p.get("downtime_type"),
 			p.get("melting_batch"),
 			p.get("mother_coil"),

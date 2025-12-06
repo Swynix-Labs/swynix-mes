@@ -9,9 +9,9 @@ from frappe.model.document import Document
 
 # Status lists for scheduling logic
 # Plans that can still be shifted (not yet started)
-SHIFTABLE_STATUSES = ["Planned", "Released"]
+SHIFTABLE_STATUSES = ["Planned"]
 # Plans that are locked (already in production or completed)
-LOCKED_STATUSES = ["Melting", "Metal Ready", "Casting", "Coils Complete", "Not Produced"]
+LOCKED_STATUSES = ["Melting", "Metal Ready", "Casting", "Coils Complete"]
 
 
 class PPCCastingPlan(Document):
@@ -180,16 +180,6 @@ class PPCCastingPlan(Document):
 				if cust:
 					self.customer = cust
 
-		# Auto-link active CMR by alloy if not set
-		if self.alloy and not self.charge_mix_recipe:
-			cmr = frappe.db.get_value(
-				"Charge Mix Ratio",
-				{"alloy": self.alloy, "is_active": 1, "docstatus": 1},
-				"name",
-				order_by="effective_date desc"
-			)
-			if cmr:
-				self.charge_mix_recipe = cmr
 
 	def validate_downtime_fields(self):
 		"""Validate fields specific to Downtime plan type"""
@@ -204,7 +194,7 @@ class PPCCastingPlan(Document):
 		of the schedule. We move all plans with start_datetime >= this plan's
 		start_datetime forward by this plan's duration.
 		"""
-		if not self.caster or not self.start_datetime or not self.end_datetime:
+		if not self.casting_workstation or not self.start_datetime or not self.end_datetime:
 			return
 
 		# Duration of the new plan
@@ -216,7 +206,7 @@ class PPCCastingPlan(Document):
 		future_plans = frappe.get_all(
 			"PPC Casting Plan",
 			filters={
-				"caster": self.caster,
+				"caster": self.casting_workstation,
 				"status": ["in", SHIFTABLE_STATUSES],
 				"docstatus": ["<", 2],
 				"start_datetime": [">=", self.start_datetime],
@@ -258,7 +248,7 @@ class PPCCastingPlan(Document):
 		- SHIFTABLE plans that start at/after this plan's start are being shifted, so allow overlap
 		- SHIFTABLE plans that start BEFORE this plan's start must not overlap
 		"""
-		if not self.caster or not self.start_datetime or not self.end_datetime:
+		if not self.casting_workstation or not self.start_datetime or not self.end_datetime:
 			return
 
 		# 1) Always check for overlaps with LOCKED plans
@@ -280,7 +270,7 @@ class PPCCastingPlan(Document):
 			""",
 			(
 				self.name or "New",
-				self.caster,
+				self.casting_workstation,
 				tuple(LOCKED_STATUSES),
 				self.start_datetime, self.start_datetime,
 				self.end_datetime, self.end_datetime,
@@ -319,7 +309,7 @@ class PPCCastingPlan(Document):
 			""",
 			(
 				self.name or "New",
-				self.caster,
+				self.casting_workstation,
 				tuple(SHIFTABLE_STATUSES),
 				self.start_datetime,  # Only plans that start BEFORE this plan
 				self.start_datetime, self.start_datetime,
@@ -340,25 +330,25 @@ class PPCCastingPlan(Document):
 		# because those will be shifted by shift_future_plans()
 
 	def validate_workstations(self):
-		"""Ensure caster and furnace workstation types are correct."""
-		# Validate caster - must be workstation_type = 'Casting'
-		if self.caster:
-			caster_type = frappe.db.get_value("Workstation", self.caster, "workstation_type")
-			if caster_type != "Casting":
+		"""Ensure casting workstation and furnace workstation types are correct."""
+		# Validate casting workstation - must be workstation_type = 'Casting'
+		if self.casting_workstation:
+			ws_type = frappe.db.get_value("Workstation", self.casting_workstation, "workstation_type")
+			if ws_type != "Casting":
 				frappe.throw(
-					_("Selected caster '{0}' is of type '{1}'. "
-					  "Only Workstations with type 'Casting' can be selected as Caster.").format(
-						self.caster, caster_type or "Unknown"
+					_("Selected workstation '{0}' is of type '{1}'. "
+					  "Only Workstations with type 'Casting' can be selected as Casting Workstation.").format(
+						self.casting_workstation, ws_type or "Unknown"
 					)
 				)
 
-		# Validate furnace - must be workstation_type = 'Foundry'
+		# Validate furnace - must be workstation_type = 'Furnace'
 		if self.furnace:
 			furnace_type = frappe.db.get_value("Workstation", self.furnace, "workstation_type")
-			if furnace_type != "Foundry":
+			if furnace_type != "Furnace":
 				frappe.throw(
 					_("Selected furnace '{0}' is of type '{1}'. "
-					  "Only Workstations with type 'Foundry' can be selected as Furnace.").format(
+					  "Only Workstations with type 'Furnace' can be selected as Furnace.").format(
 						self.furnace, furnace_type or "Unknown"
 					)
 				)
@@ -560,13 +550,13 @@ def get_casting_plans_for_caster(caster, from_date=None, to_date=None):
 		filters=filters,
 		fields=[
 			"name", "cast_no", "plan_type", "plan_date", "shift", "status",
-			"caster", "furnace",
+			"casting_workstation", "furnace",
 			"start_datetime", "end_datetime", "duration_minutes",
 			"melting_start", "melting_end", "casting_start", "casting_end",
 			"actual_start", "actual_end",
 			"product_item", "alloy", "temper", "planned_width_mm", "planned_gauge_mm",
 			"planned_weight_mt", "final_width_mm", "final_gauge_mm", "final_weight_mt",
-			"customer", "block_color", "charge_mix_recipe",
+			"customer", "block_color",
 			"downtime_type", "downtime_reason",
 			"melting_batch", "mother_coil",
 			"overlap_flag", "overlap_note"
