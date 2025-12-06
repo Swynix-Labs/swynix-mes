@@ -574,9 +574,52 @@ function update_action_buttons(doc) {
 		$addRm.prop("disabled", true);
 	} else if (status === "Melting") {
 		$chargingComplete.hide();
+		// Check QC status to enable/disable transfer button
+		check_qc_status_for_transfer(doc.name || mk_current_batch, $ready);
 	} else if (status === "Charging") {
 		$ready.prop("disabled", true);
 	}
+}
+
+/**
+ * Check QC status and update transfer button state.
+ * Transfer is only allowed if QC is Approved/Within Spec.
+ */
+function check_qc_status_for_transfer(batch_name, $btn) {
+	if (!batch_name) {
+		$btn.prop("disabled", true);
+		return;
+	}
+	
+	frappe.call({
+		method: "swynix_mes.swynix_mes.api.qc_kiosk.check_qc_for_transfer",
+		args: { batch_name: batch_name },
+		async: true,
+		callback: function(r) {
+			if (!r.message) {
+				$btn.prop("disabled", true);
+				return;
+			}
+			
+			var qc_status = r.message.qc_status;
+			var can_transfer = r.message.can_transfer;
+			
+			// Disable button if QC is not OK
+			if (qc_status === "OK" && can_transfer) {
+				$btn.prop("disabled", false);
+				$btn.attr("title", "QC approved - Ready to transfer");
+			} else if (qc_status === "Correction Required") {
+				$btn.prop("disabled", true);
+				$btn.attr("title", "QC Correction Required - Cannot transfer");
+			} else if (qc_status === "Pending") {
+				$btn.prop("disabled", true);
+				$btn.attr("title", "QC Pending - Complete QC approval before transfer");
+			} else {
+				$btn.prop("disabled", true);
+				$btn.attr("title", "QC status: " + qc_status);
+			}
+		}
+	});
 }
 
 function render_recipe_targets(recipe, items, batch, plan) {

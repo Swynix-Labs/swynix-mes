@@ -117,7 +117,7 @@
             "fieldname": "qc_decision",
             "fieldtype": "Select",
             "label": "QC Decision",
-            "options": "Pending\nWithin Spec\nApproved\nCorrection Required\nRejected"
+            "options": "Pending\nWithin Spec\nApproved\nCorrection Required\nRejected\nHold"
         },
         {
             "description": "Name of the source document",
@@ -253,7 +253,7 @@
             "in_list_view": 1,
             "in_standard_filter": 1,
             "label": "Status",
-            "options": "Pending\nIn Lab\nWithin Spec\nApproved\nCorrection Required\nRejected"
+            "options": "Pending\nIn Lab\nWithin Spec\nApproved\nCorrection Required\nRejected\nHold"
         },
         {
             "default": "Pending",
@@ -325,7 +325,7 @@
             "fieldname": "qc_action",
             "fieldtype": "Select",
             "label": "QC Action",
-            "options": "\nApprove\nReject\nRequest Correction"
+            "options": "\nApprove\nReject\nRequest Correction\nHold"
         },
         {
             "fieldname": "qc_comment",

@@ -78,6 +78,7 @@ def _map_status_filter(status_val):
         "Within Spec": ["Approved", "Accepted", "Within Spec"],
         "Rejected": ["Rejected"],  # Only Rejected, not Correction Required
         "Correction Required": ["Correction Required"],  # Only Correction Required, not Rejected
+        "Hold": ["Hold"],  # Samples on hold
     }
     return status_map.get(status_val, [status_val])
 
@@ -99,7 +100,22 @@ def _map_display_status(status, overall=None):
 
 @frappe.whitelist()
 def export_samples_to_excel(filters=None):
-    """Export filtered samples to Excel."""
+    """
+    Export filtered samples to Excel with all required columns.
+    
+    Columns:
+    - Sample No
+    - Source Type
+    - Melting Batch
+    - Mother Coil
+    - Caster
+    - Elements (dynamic)
+    - Deviation Summary
+    - QC Decision
+    - Remarks
+    - Approved By
+    - Approved At
+    """
     import json
     from frappe.utils.xlsxutils import make_xlsx
     from frappe.utils import nowdate
@@ -133,45 +149,106 @@ def export_samples_to_excel(filters=None):
         "QC Sample",
         filters=sample_filters,
         fields=[
-            "name", "sample_id", "source_type", "source_document", "alloy", "product_item", 
-            "furnace", "caster", "sample_time", "status", "overall_result", 
-            "qc_comment", "correction_note", "deviation_messages"
+            "name", "sample_id", "sample_no", "source_type", "source_document", 
+            "melting_batch", "mother_coil", "caster", "furnace",
+            "alloy", "product_item", "temper",
+            "sample_time", "status", "overall_result", "qc_decision",
+            "qc_comment", "correction_note", "remarks", "deviation_messages",
+            "lab_technician", "qc_decision_time"
         ],
         order_by="sample_time desc"
     )
     
-    # Fetch elements for each sample to include in export
+    # Fetch elements and get user full names
     for d in data:
         sample_doc = frappe.get_doc("QC Sample", d.name)
-        d.elements = {el.element: el.sample_pct for el in sample_doc.elements if el.sample_pct is not None}
+        d.elements = {}
+        d.element_codes = {}
+        for el in sample_doc.elements:
+            if el.sample_pct is not None:
+                elem_code = getattr(el, "element_code", None) or get_element_code_from_item(el.element)
+                if elem_code:
+                    d.element_codes[elem_code] = el.sample_pct
+                d.elements[el.element or elem_code] = el.sample_pct
+        
+        # Get user full name for lab technician
+        if d.lab_technician:
+            d.approved_by_name = frappe.db.get_value("User", d.lab_technician, "full_name") or d.lab_technician
+        else:
+            d.approved_by_name = ""
 
-    # Identify all unique elements across samples to create columns
+    # Identify all unique element codes across samples
     all_elements = set()
     for d in data:
-        if hasattr(d, "elements"):
-            all_elements.update(d.elements.keys())
+        if hasattr(d, "element_codes"):
+            all_elements.update(d.element_codes.keys())
     sorted_elements = sorted(list(all_elements))
 
-    # Prepare rows
-    columns = ["Sample ID", "Source Type", "Source Document", "Alloy", "Product", "Furnace", "Caster", "Time", "Status", "Result", "QC Comment", "Correction Note", "Deviations"]
-    columns.extend(sorted_elements)
+    # Prepare columns as per specification
+    fixed_columns = [
+        "Sample No",
+        "Source Type", 
+        "Melting Batch",
+        "Mother Coil",
+        "Caster",
+        "Furnace",
+        "Alloy",
+        "Product",
+        "Temper",
+        "Sample Time"
+    ]
     
+    # Add element columns
+    element_columns = sorted_elements
+    
+    # Add remaining columns
+    tail_columns = [
+        "Deviation Summary",
+        "QC Decision",
+        "Status",
+        "Overall Result",
+        "Remarks",
+        "Approved By",
+        "Approved At"
+    ]
+    
+    columns = fixed_columns + element_columns + tail_columns
     rows = [columns]
     
     for d in data:
         row = [
-            d.sample_id, d.source_type, d.source_document, d.alloy, d.product_item,
-            d.furnace, d.caster, d.sample_time, d.status, d.overall_result,
-            d.qc_comment, d.correction_note, d.deviation_messages
+            d.sample_no or d.sample_id,
+            d.source_type,
+            d.melting_batch or "",
+            d.mother_coil or "",
+            d.caster or "",
+            d.furnace or "",
+            d.alloy or "",
+            d.product_item or "",
+            d.temper or "",
+            str(d.sample_time) if d.sample_time else ""
         ]
+        
         # Add element values
         for el in sorted_elements:
-            val = d.elements.get(el, "")
+            val = d.element_codes.get(el, "")
             row.append(val)
+        
+        # Add tail columns
+        row.extend([
+            d.deviation_messages or "",
+            d.qc_decision or "",
+            d.status or "",
+            d.overall_result or "",
+            d.qc_comment or d.correction_note or d.remarks or "",
+            d.approved_by_name or "",
+            str(d.qc_decision_time) if d.qc_decision_time else ""
+        ])
+        
         rows.append(row)
         
     xlsx_file = make_xlsx(rows, "QC Samples")
-    file_name = f"QC_Samples_{nowdate()}.xlsx"
+    file_name = f"QC_Samples_Export_{nowdate()}.xlsx"
 
     frappe.response["filename"] = file_name
     frappe.response["filecontent"] = xlsx_file.getvalue()
@@ -273,6 +350,13 @@ def get_sample_details(batch=None, sample_id=None, sample_name=None):
     
     if not sample_name:
         frappe.throw(_("Sample is required"))
+    
+    # Check if sample exists before trying to load
+    if not frappe.db.exists("QC Sample", sample_name):
+        frappe.throw(
+            _("QC Sample '{0}' not found. The sample may have been deleted. Please refresh the page.").format(sample_name),
+            title=_("Sample Not Found")
+        )
     
     sample_doc = frappe.get_doc("QC Sample", sample_name)
     
@@ -582,6 +666,13 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
     """
     Update QC Sample readings and perform QC actions.
     Supports multi-source QC Sample DocType.
+    
+    Actions:
+    - save: Save readings without decision
+    - approve: Mark as Within Spec / Approved
+    - reject: Mark as Rejected
+    - correction_required: Request correction from operator
+    - hold: Put sample on hold for further review
     """
     from swynix_mes.swynix_mes.doctype.qc_sample.qc_sample import get_element_code as qc_element_code
     import json
@@ -591,7 +682,7 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
     
     readings = frappe._dict(readings or {})
     
-    if action not in ["save", "approve", "reject", "correction_required"]:
+    if action not in ["save", "approve", "reject", "correction_required", "hold"]:
         frappe.throw(_("Invalid action: {0}").format(action))
     
     if not sample_name and sample_id:
@@ -602,6 +693,13 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
     
     if not sample_name:
         frappe.throw(_("Sample is required"))
+    
+    # Check if sample exists before trying to load
+    if not frappe.db.exists("QC Sample", sample_name):
+        frappe.throw(
+            _("QC Sample '{0}' not found. The sample may have been deleted. Please refresh the page.").format(sample_name),
+            title=_("Sample Not Found")
+        )
     
     sample_doc = frappe.get_doc("QC Sample", sample_name)
     
@@ -643,13 +741,18 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
         sample_doc.correction_required = 1
         sample_doc.status = "Correction Required"
         sample_doc.qc_decision = "Correction Required"
+    elif action == "hold":
+        sample_doc.qc_action = "Hold"
+        sample_doc.qc_comment = comment or ""
+        sample_doc.status = "Hold"
+        sample_doc.qc_decision = "Hold"
     
     # Persist changes
     sample_doc.lab_technician = frappe.session.user
     if action != "save":
         sample_doc.qc_decision_time = now_datetime()
     
-    if action in ["approve", "reject", "correction_required"]:
+    if action in ["approve", "reject", "correction_required", "hold"]:
         sample_doc.flags.from_kiosk = True
         sample_doc.save()
         sample_doc.submit()
@@ -662,7 +765,8 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
     
     frappe.db.commit()
     
-    return {
+    # Build response with stock entry info if applicable
+    result = {
         "success": True,
         "sample_id": sample_doc.sample_id,
         "sample_name": sample_doc.name,
@@ -671,6 +775,15 @@ def update_sample_result(batch=None, sample_id=None, sample_name=None, readings=
         "batch_qc_status": sample_doc.status,
         "message": get_action_message(action, sample_doc.sample_id)
     }
+    
+    # Include stock entry info for approved casting coils
+    if action == "approve" and sample_doc.source_type == "Casting" and sample_doc.mother_coil:
+        coil = frappe.get_doc("Mother Coil", sample_doc.mother_coil)
+        if coil.stock_entry:
+            result["stock_entry"] = coil.stock_entry
+            result["message"] = f"Sample {sample_doc.sample_id} approved. Stock Entry {coil.stock_entry} created."
+    
+    return result
 
 
 def propagate_qc_status(qc_sample):
@@ -690,11 +803,11 @@ def propagate_qc_status(qc_sample):
                 s.status = qc_sample.status
                 s.overall_result = qc_sample.overall_result
                 s.correction_required = qc_sample.correction_required
-                s.qc_status = qc_sample.overall_result # Sync local status
+                s.qc_status = qc_sample.overall_result  # Sync local status
                 s.qc_comment = qc_sample.qc_comment
                 # Accept both "Approved" and "Within Spec" as approval
                 if qc_sample.status in ("Approved", "Within Spec"):
-                    s.status = "Accepted" # Legacy mapping
+                    s.status = "Accepted"  # Legacy mapping
                 updated = True
                 break
         
@@ -705,33 +818,67 @@ def propagate_qc_status(qc_sample):
                 batch.qc_status = "OK"
             elif qc_sample.status == "Correction Required":
                 batch.qc_status = "Correction Required"
-            # If rejected, we don't necessarily change batch status, just the sample row
+            elif qc_sample.status == "Rejected":
+                batch.qc_status = "Rejected"
+            # Hold status - keep batch status unchanged, just note the hold
             
-            batch.flags.ignore_validate = True # Avoid re-triggering heavy validations
+            batch.flags.ignore_validate = True  # Avoid re-triggering heavy validations
             batch.save(ignore_permissions=True)
 
     # Casting Propagation (handle both old and new source_type values)
     elif source_type in ("Casting", "Casting Coil", "Coil", "Casting Run") and qc_sample.mother_coil:
-        # Update Mother Coil
-        coil = frappe.get_doc("Mother Coil", qc_sample.mother_coil)
-        coil.qc_status = qc_sample.status
-        coil.qc_comments = qc_sample.qc_comment
-        coil.qc_deviation_summary = qc_sample.deviation_messages
-        coil.coil_qc_sample = qc_sample.name
-        
-        # Generate final ID on approval (accept both "Approved" and "Within Spec")
-        from swynix_mes.swynix_mes.api.casting_kiosk import generate_final_coil_id
-        if qc_sample.status in ("Approved", "Within Spec") and not coil.is_scrap and not coil.coil_id:
-            coil.coil_id = generate_final_coil_id(coil)
+        # The QC Sample's handle_approval already handles coil updates and stock entry
+        # This function is only called for backward compatibility with kiosk direct updates
+        # Check if the QC Sample's own handle methods already ran
+        if getattr(qc_sample.flags, 'from_kiosk', False):
+            # QC Sample was submitted via kiosk - handle_approval() was already called
+            # Just ensure coil reflects latest status
+            coil = frappe.get_doc("Mother Coil", qc_sample.mother_coil)
             
-        # Handle rejection
-        if qc_sample.status == "Rejected":
-            coil.qc_status = "Rejected"
-            # Optionally mark as scrap or just let user do it?
-            # User instructions say "Propagate status", we'll stick to setting fields.
-        
-        coil.flags.ignore_validate = True
-        coil.save(ignore_permissions=True)
+            # Update fields that might not have been set by handle_approval
+            if qc_sample.status not in ("Approved", "Within Spec"):
+                # For non-approval statuses, update coil status
+                coil.qc_status = qc_sample.status
+                coil.qc_comments = qc_sample.qc_comment
+                coil.qc_deviation_summary = qc_sample.deviation_messages
+                coil.coil_qc_sample = qc_sample.name
+                coil.qc_last_sample = qc_sample.name
+                coil.qc_last_comment = qc_sample.qc_comment
+                
+                # Handle Hold status
+                if qc_sample.status == "Hold":
+                    coil.qc_status = "Hold"
+                    coil.coil_status = "Hold"
+                
+                coil.flags.ignore_validate = True
+                coil.save(ignore_permissions=True)
+        else:
+            # Direct call - perform full propagation
+            coil = frappe.get_doc("Mother Coil", qc_sample.mother_coil)
+            coil.qc_status = qc_sample.status
+            coil.qc_comments = qc_sample.qc_comment
+            coil.qc_deviation_summary = qc_sample.deviation_messages
+            coil.coil_qc_sample = qc_sample.name
+            coil.qc_last_sample = qc_sample.name
+            coil.qc_last_comment = qc_sample.qc_comment
+            
+            # Generate final ID on approval (accept both "Approved" and "Within Spec")
+            from swynix_mes.swynix_mes.api.casting_kiosk import generate_final_coil_id
+            if qc_sample.status in ("Approved", "Within Spec") and not coil.is_scrap and not coil.coil_id:
+                coil.coil_id = generate_final_coil_id(coil)
+                
+            # Handle rejection
+            if qc_sample.status == "Rejected":
+                coil.qc_status = "Rejected"
+                coil.coil_status = "Rejected"
+            
+            # Handle Hold
+            if qc_sample.status == "Hold":
+                coil.qc_status = "Hold"
+                coil.coil_status = "Hold"
+            
+            coil.flags.ignore_validate = True
+            coil.save(ignore_permissions=True)
 
 
 def get_action_message(action, sample_id):
@@ -740,7 +887,8 @@ def get_action_message(action, sample_id):
         "save": f"Sample {sample_id} saved",
         "approve": f"Sample {sample_id} approved - QC OK",
         "reject": f"Sample {sample_id} rejected",
-        "correction_required": f"Correction request sent for sample {sample_id}"
+        "correction_required": f"Correction request sent for sample {sample_id}",
+        "hold": f"Sample {sample_id} placed on hold"
     }
     return messages.get(action, "Action completed")
 

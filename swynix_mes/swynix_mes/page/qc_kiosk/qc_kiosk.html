@@ -196,6 +196,7 @@
 .qc-badge-approved { background: #d1fae5; color: #047857; }
 .qc-badge-rejected { background: #fee2e2; color: #b91c1c; }
 .qc-badge-correction { background: #fef3c7; color: #b45309; border: 1px dashed #f59e0b; }
+.qc-badge-hold { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
 
 /* Right Pane */
 .qc-right-pane {
@@ -1080,6 +1081,7 @@
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
                     <option value="Correction Required">Correction Required</option>
+                    <option value="Hold">Hold</option>
                 </select>
             </div>
             <div class="qc-filter-item">
@@ -1201,13 +1203,16 @@
                                         <i class="fa fa-save"></i> Save Only
                                     </button>
                                     <button type="button" class="btn btn-success" id="qc_btn_approve">
-                                        <i class="fa fa-check"></i> Approve - Within Spec
+                                        <i class="fa fa-check"></i> Approve – Within Spec
                                     </button>
                                     <button type="button" class="btn btn-danger" id="qc_btn_reject">
                                         <i class="fa fa-times"></i> Reject Sample
                                     </button>
                                     <button type="button" class="btn btn-warning" id="qc_btn_correction">
                                         <i class="fa fa-exclamation-circle"></i> Ask for Correction
+                                    </button>
+                                    <button type="button" class="btn btn-info" id="qc_btn_hold" style="background: #6366f1; border-color: #4f46e5;">
+                                        <i class="fa fa-pause-circle"></i> Hold
                                     </button>
                                 </div>
                             </div>

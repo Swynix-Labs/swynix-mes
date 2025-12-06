@@ -816,6 +816,55 @@ def get_coil_process_logs(coil_name):
     return get_coil_process_log(coil_name)
 
 
+@frappe.whitelist()
+def get_coil_qc_history(coil_name):
+    """
+    Fetch QC samples history for a Mother Coil.
+    Returns list of QC Sample records linked to this coil.
+    """
+    if not coil_name:
+        return []
+    
+    samples = frappe.get_all(
+        "QC Sample",
+        filters={
+            "mother_coil": coil_name,
+            "source_type": "Casting"
+        },
+        fields=[
+            "name",
+            "sample_no",
+            "sample_id",
+            "sample_time",
+            "status",
+            "qc_decision",
+            "overall_result",
+            "deviation_messages",
+            "remarks",
+            "lab_technician",
+            "qc_decision_time"
+        ],
+        order_by="sample_time desc"
+    )
+    
+    # Build response with normalized fields
+    result = []
+    for s in samples:
+        result.append({
+            "name": s.name,
+            "sample_no": s.sample_no or s.sample_id or s.name,
+            "sample_time": s.sample_time,
+            "status": s.status or s.qc_decision or s.overall_result or "Pending",
+            "qc_decision": s.qc_decision or "Pending",
+            "deviation_summary": s.deviation_messages or "",
+            "remarks": s.remarks or "",
+            "lab_technician": s.lab_technician or "",
+            "qc_decision_time": s.qc_decision_time
+        })
+    
+    return result
+
+
 # Placeholder for future inventory integration
 def create_coil_stock_entry_if_required(coil_doc):
     """

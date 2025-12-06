@@ -772,16 +772,17 @@ function render_coil_detail(coil) {
 			'</div>';
 	}
 
-	// Tabs
+	// Tabs - Overview, Process Log, QC History
 	html += '<div class="ck-coil-tabs">' +
-		'<button class="ck-coil-tab active" data-tab="detail">Details</button>' +
+		'<button class="ck-coil-tab active" data-tab="overview">Overview</button>' +
 		'<button class="ck-coil-tab" data-tab="process">Process Log</button>' +
+		'<button class="ck-coil-tab" data-tab="qc-history">QC History</button>' +
 		'</div>';
 
 	html += '<div class="ck-tabs-content">';
 
-	// Detail tab content
-	html += '<div class="ck-tab-pane active ck-coil-detail-content">' +
+	// Overview tab content
+	html += '<div class="ck-tab-pane active ck-coil-overview-content">' +
 		'<div class="ck-details-grid">' +
 		render_detail_item("Alloy", coil.alloy) +
 		render_detail_item("Temper", coil.temper) +
@@ -790,12 +791,20 @@ function render_coil_detail(coil) {
 		render_detail_item("Furnace", coil.furnace) +
 		render_detail_item("Casting Plan", coil.casting_plan || coil.casting_plan_id) +
 		render_detail_item("Melting Batch", coil.melting_batch) +
+		render_detail_item("Item Code", coil.item_code || "-") +
+		render_detail_item("Target Warehouse", coil.target_warehouse || "-") +
+		render_detail_item("Stock Entry", coil.stock_entry || "-") +
 		'</div>' +
 		'</div>';
 
 	// Process log tab content
 	html += '<div class="ck-tab-pane ck-coil-process-log">' +
 		'<div id="ck_coil_process_log_container" class="ck-process-log-container"></div>' +
+		'</div>';
+
+	// QC History tab content
+	html += '<div class="ck-tab-pane ck-coil-qc-history">' +
+		'<div id="ck_coil_qc_history_container" class="ck-qc-history-container"></div>' +
 		'</div>';
 
 	html += '</div>'; // end tabs content
@@ -875,12 +884,23 @@ $(document).on("click", ".ck-coil-tab", function () {
 	var tab = $(this).data("tab");
 	$(".ck-coil-tab").removeClass("active");
 	$(this).addClass("active");
-	if (tab === "detail") {
-		$(".ck-coil-detail-content").show();
-		$(".ck-coil-process-log").hide();
-	} else {
-		$(".ck-coil-detail-content").hide();
+	
+	// Hide all tab panes
+	$(".ck-coil-overview-content").hide();
+	$(".ck-coil-process-log").hide();
+	$(".ck-coil-qc-history").hide();
+	
+	// Show selected tab
+	if (tab === "overview") {
+		$(".ck-coil-overview-content").show();
+	} else if (tab === "process") {
 		$(".ck-coil-process-log").show();
+	} else if (tab === "qc-history") {
+		$(".ck-coil-qc-history").show();
+		// Load QC history when tab is clicked
+		if (ck_state.selected_coil) {
+			load_coil_qc_history(ck_state.selected_coil);
+		}
 	}
 });
 
@@ -913,6 +933,66 @@ function load_coil_process_log(coil_name) {
 	});
 }
 
+function load_coil_qc_history(coil_name) {
+	frappe.call({
+		method: "swynix_mes.swynix_mes.api.casting_kiosk.get_coil_qc_history",
+		args: { coil_name: coil_name },
+		callback: function (r) {
+			var samples = r.message || [];
+			var html = '';
+			if (!samples.length) {
+				html = '<div class="ck-empty-state" style="padding:12px;"><i class="fa fa-flask"></i><p>No QC samples for this coil.</p></div>';
+			} else {
+				html = '<div class="ck-process-log-list">';
+				samples.forEach(function (s) {
+					var status_class = get_qc_sample_status_class(s.status);
+					html += '<div class="ck-process-log-card">' +
+						'<div class="ck-log-top">' +
+						'<span class="ck-log-time">' + frappe.datetime.str_to_user(s.sample_time) + '</span>' +
+						'<span class="ck-status ' + status_class + '">' + frappe.utils.escape_html(s.status || "Pending") + '</span>' +
+						'</div>' +
+						'<div class="ck-log-user"><i class="fa fa-flask"></i> Sample: ' + 
+						frappe.utils.escape_html(s.sample_no || s.name) + '</div>' +
+						'<div class="ck-log-details">' +
+						'<strong>QC Decision:</strong> ' + frappe.utils.escape_html(s.qc_decision || "Pending") +
+						'</div>';
+					
+					if (s.deviation_summary) {
+						html += '<div class="ck-log-remarks" style="color:#b45309;">' +
+							'<i class="fa fa-exclamation-triangle"></i> ' + 
+							frappe.utils.escape_html(s.deviation_summary) + '</div>';
+					}
+					
+					if (s.remarks) {
+						html += '<div class="ck-log-remarks">' + frappe.utils.escape_html(s.remarks) + '</div>';
+					}
+					
+					if (s.lab_technician) {
+						html += '<div class="ck-log-user" style="margin-top:4px;"><i class="fa fa-user-md"></i> Lab: ' + 
+							frappe.utils.escape_html(s.lab_technician) + '</div>';
+					}
+					
+					html += '</div>';
+				});
+				html += '</div>';
+			}
+			$("#ck_coil_qc_history_container").html(html);
+		}
+	});
+}
+
+function get_qc_sample_status_class(status) {
+	var map = {
+		"Pending": "planned",
+		"Approved": "coils-complete",
+		"Within Spec": "coils-complete",
+		"Correction Required": "released",
+		"Rejected": "not-produced",
+		"Hold": "melting"
+	};
+	return map[status] || "planned";
+}
+
 function update_finish_button_state(coil) {
 	var $btn = $("#ck_btn_finish_coil");
 	if (!$btn.length) return;
@@ -920,8 +1000,18 @@ function update_finish_button_state(coil) {
 		$btn.prop("disabled", false);
 		return;
 	}
-	var ok = (coil.qc_status === "Approved" || coil.chemistry_status === "Approved");
+	var ok = (coil.qc_status === "Approved" || coil.qc_status === "Within Spec" || 
+		coil.chemistry_status === "Approved" || coil.chemistry_status === "Within Spec");
 	$btn.prop("disabled", !ok);
+}
+
+function can_finish_selected_coil() {
+	if (!ck_state.selected_coil) return false;
+	var coil = ck_state.coils.find(function (c) { return c.name === ck_state.selected_coil; });
+	if (!coil) return false;
+	// Allow finish if QC is approved or within spec
+	return (coil.qc_status === "Approved" || coil.qc_status === "Within Spec" || 
+		coil.chemistry_status === "Approved" || coil.chemistry_status === "Within Spec");
 }
 
 function mark_coil_scrap(coil_name) {

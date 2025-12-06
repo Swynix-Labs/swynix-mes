@@ -80,8 +80,8 @@ def take_casting_sample(coil_name):
     
     qc.insert(ignore_permissions=True)
     
-    # Update coil flags
-    coil.qc_status = "Sample Taken"
+    # Update coil flags - qc_status stays "Pending" (valid enum value)
+    # Do NOT set qc_status = "Sample Taken" as it's not a valid option
     coil.coil_status = "QC Pending"
     coil.qc_last_sample = qc.name
     coil.qc_last_comment = qc.qc_comment or ""

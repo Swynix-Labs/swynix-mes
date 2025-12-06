@@ -129,6 +129,10 @@ function bind_events() {
 		confirm_action('correction_required');
 	});
 
+	$('#qc_btn_hold').on('click', function() {
+		confirm_action('hold');
+	});
+
 	// Element input change - update styling
 	$(document).on('input', '.qc-actual-input', function() {
 		update_element_status($(this));
@@ -410,12 +414,15 @@ function get_status_badge_class(status) {
 		case 'Approved':
 		case 'Accepted':
 		case 'Within Limit':
+		case 'Within Spec':
 			return 'qc-badge-approved';
 		case 'Rejected':
 		case 'Out of Limit':
 			return 'qc-badge-rejected';
 		case 'Correction Required':
 			return 'qc-badge-correction';
+		case 'Hold':
+			return 'qc-badge-hold';
 		default:
 			return 'qc-badge-pending';
 	}
@@ -457,6 +464,21 @@ function select_sample(sample_name) {
 				qc_state.current_sample_data = r.message;
 				render_sample_detail(r.message);
 			}
+		},
+		error: function(r) {
+			// Handle sample not found - refresh the list
+			qc_state.current_sample_data = null;
+			clear_sample_details();
+			$('#qc_detail_header').html(
+				'<div class="qc-error" style="padding: 20px; text-align: center; color: #dc2626;">' +
+				'<i class="fa fa-exclamation-triangle"></i> ' +
+				'<span>Sample not found. Refreshing...</span>' +
+				'</div>'
+			);
+			// Reload samples after a brief delay
+			setTimeout(function() {
+				load_samples();
+			}, 1000);
 		}
 	});
 }
@@ -674,21 +696,31 @@ function update_action_buttons(status) {
 	let $approve = $('#qc_btn_approve');
 	let $reject = $('#qc_btn_reject');
 	let $correction = $('#qc_btn_correction');
+	let $hold = $('#qc_btn_hold');
 	let $save = $('#qc_btn_save');
 
 	// Enable all by default
-	$approve.prop('disabled', false);
+	$approve.prop('disabled', false).text(__('Approve – Within Spec'));
 	$reject.prop('disabled', false);
 	$correction.prop('disabled', false);
+	$hold.prop('disabled', false);
 	$save.prop('disabled', false);
 
 	// Disable based on status
-	if (status === 'Approved' || status === 'Accepted') {
-		$approve.prop('disabled', true).text('Already Approved');
+	if (status === 'Approved' || status === 'Accepted' || status === 'Within Spec') {
+		$approve.prop('disabled', true).text(__('Already Approved'));
+		$hold.prop('disabled', true);
 	}
 	if (status === 'Rejected') {
 		$approve.prop('disabled', true);
-		$reject.prop('disabled', true);
+		$reject.prop('disabled', true).text(__('Already Rejected'));
+		$hold.prop('disabled', true);
+	}
+	if (status === 'Hold') {
+		$hold.prop('disabled', true).text(__('On Hold'));
+	}
+	if (status === 'Correction Required') {
+		$correction.prop('disabled', true).text(__('Correction Requested'));
 	}
 }
 
@@ -725,19 +757,44 @@ function save_sample(action) {
 			comment: comment
 		},
 		freeze: true,
-		freeze_message: __("Saving..."),
+		freeze_message: __("Processing..."),
 		callback: function(r) {
 			if (r.message && r.message.success) {
+				let indicator = 'blue';
+				if (action === 'approve') indicator = 'green';
+				else if (action === 'reject') indicator = 'red';
+				else if (action === 'correction_required') indicator = 'orange';
+				else if (action === 'hold') indicator = 'yellow';
+				
 				frappe.show_alert({
 					message: r.message.message,
-					indicator: action === 'approve' ? 'green' : 
-						(action === 'reject' ? 'red' : 
-						(action === 'correction_required' ? 'orange' : 'blue'))
+					indicator: indicator
 				}, 5);
+
+				// Show stock entry notification if created
+				if (r.message.stock_entry) {
+					frappe.show_alert({
+						message: __("Stock Entry {0} created", [r.message.stock_entry]),
+						indicator: 'green'
+					}, 8);
+				}
 
 				// Refresh
 				load_samples();
 				select_sample(sample_name);
+			}
+		},
+		error: function(r) {
+			// Check if it's a "not found" error and auto-refresh the list
+			if (r && r.exc && (r.exc.includes("not found") || r.exc.includes("Not Found"))) {
+				frappe.show_alert({
+					message: __("Sample not found. Refreshing sample list..."),
+					indicator: 'orange'
+				}, 5);
+				// Clear current selection and reload
+				qc_state.current_sample_data = null;
+				clear_sample_details();
+				load_samples();
 			}
 		}
 	});
@@ -750,15 +807,17 @@ function confirm_action(action) {
 	}
 
 	let messages = {
-		'approve': __("Approve this sample as <b>Within Spec</b>?<br><br>This will mark the batch as QC OK."),
-		'reject': __("Reject this sample?<br><br>The operator may need to take a new sample."),
-		'correction_required': __("Request correction for this sample?<br><br>A comment/instruction is recommended for the melting operator.")
+		'approve': __("Approve this sample as <b>Within Spec</b>?<br><br>This will mark the batch as QC OK and generate a Stock Entry for casting coils."),
+		'reject': __("Reject this sample?<br><br>The operator may need to take a new sample. For casting coils, this will mark the coil as scrap."),
+		'correction_required': __("Request correction for this sample?<br><br>A comment/instruction is recommended for the melting operator."),
+		'hold': __("Put this sample on <b>Hold</b>?<br><br>The sample will be held for further review. No transfer or coil finalization will be allowed until resolved.")
 	};
 
 	let titles = {
 		'approve': __("Approve Sample"),
 		'reject': __("Reject Sample"),
-		'correction_required': __("Request Correction")
+		'correction_required': __("Request Correction"),
+		'hold': __("Put on Hold")
 	};
 
 	// Check if comment is needed for correction

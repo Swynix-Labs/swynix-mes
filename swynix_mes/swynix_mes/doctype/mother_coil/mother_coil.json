@@ -46,6 +46,11 @@
         "qc_last_comment",
         "ready_for_stock_entry",
         "is_finalized",
+        "stock_entry_section",
+        "item_code",
+        "target_warehouse",
+        "column_break_stock",
+        "stock_entry",
         "disposition_section",
         "is_scrap",
         "scrap_reason",
@@ -254,7 +259,7 @@
             "fieldname": "coil_status",
             "fieldtype": "Select",
             "label": "Coil Status",
-            "options": "Pending\nQC Pending\nCorrection Required\nApproved\nRejected\nScrap"
+            "options": "Pending\nQC Pending\nCorrection Required\nApproved\nRejected\nHold\nScrap"
         },
         {
             "default": "Pending",
@@ -316,6 +321,38 @@
             "fieldname": "is_finalized",
             "fieldtype": "Check",
             "label": "Is Final Coil"
+        },
+        {
+            "collapsible": 1,
+            "fieldname": "stock_entry_section",
+            "fieldtype": "Section Break",
+            "label": "Stock Entry"
+        },
+        {
+            "description": "Coil item to be received into stock",
+            "fieldname": "item_code",
+            "fieldtype": "Link",
+            "label": "Item Code",
+            "options": "Item"
+        },
+        {
+            "description": "Target warehouse for finished coil storage",
+            "fieldname": "target_warehouse",
+            "fieldtype": "Link",
+            "label": "Target Warehouse",
+            "options": "Warehouse"
+        },
+        {
+            "fieldname": "column_break_stock",
+            "fieldtype": "Column Break"
+        },
+        {
+            "description": "Stock Entry created on QC approval",
+            "fieldname": "stock_entry",
+            "fieldtype": "Link",
+            "label": "Stock Entry",
+            "options": "Stock Entry",
+            "read_only": 1
         },
         {
             "fieldname": "disposition_section",

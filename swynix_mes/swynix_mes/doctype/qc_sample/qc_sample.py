@@ -298,7 +298,7 @@ class QCSample(Document):
     def validate_qc_decision(self):
         """Ensure QC decision is made before submit."""
         if not self.qc_action:
-            frappe.throw(_("QC Action is required before submitting. Please Approve, Reject, or Request Correction."))
+            frappe.throw(_("QC Action is required before submitting. Please Approve, Reject, Request Correction, or Hold."))
         
         if self.qc_action == "Request Correction" and not self.correction_note:
             frappe.throw(_("Correction Note is required when requesting correction."))
@@ -318,6 +318,9 @@ class QCSample(Document):
             self.status = "Correction Required"
             self.correction_required = 1
             self.handle_correction_request()
+        elif self.qc_action == "Hold":
+            self.status = "Hold"
+            self.handle_hold()
     
     def handle_approval(self):
         """Handle QC approval - sync to source and generate final coils for Casting Run."""
@@ -344,6 +347,8 @@ class QCSample(Document):
             coil.qc_last_sample = self.name
             coil.qc_last_comment = self.qc_comment or ""
             coil.ready_for_stock_entry = 1
+            
+            # Generate final coil ID if not already assigned
             if not coil.coil_id and not coil.is_scrap:
                 coil.coil_id = generate_final_coil_id(coil)
                 coil.flags.skip_final_id_log = True
@@ -355,8 +360,10 @@ class QCSample(Document):
                     reference_name=coil.name,
                     details=f"{coil.temp_coil_id} → {coil.coil_id}"
                 )
+            
             coil.flags.qc_approved = True
             coil.save(ignore_permissions=True)
+            
             log_coil_event(
                 coil=coil.name,
                 casting_run=coil.casting_run,
@@ -365,6 +372,24 @@ class QCSample(Document):
                 reference_name=self.name,
                 details=f"Approved - {self.qc_comment or 'Within Spec'}"
             )
+            
+            # Create Stock Entry for approved casting coil
+            stock_entry_name = create_stock_entry_for_coil(coil)
+            if stock_entry_name:
+                # Update coil with stock entry reference
+                coil.reload()
+                coil.stock_entry = stock_entry_name
+                coil.is_finalized = 1
+                coil.save(ignore_permissions=True)
+                
+                log_coil_event(
+                    coil=coil.name,
+                    casting_run=coil.casting_run,
+                    event_type="QC_APPROVED_AND_RECEIVED",
+                    reference_doctype="Stock Entry",
+                    reference_name=stock_entry_name,
+                    details=f"Coil approved and received into stock as {stock_entry_name}"
+                )
     
     def handle_rejection(self):
         """Handle QC rejection - mark coils as scrap/recast."""
@@ -489,6 +514,34 @@ class QCSample(Document):
                 reference_doctype="QC Sample",
                 reference_name=self.name,
                 details=f"Correction Required - {self.correction_note or ''}"
+            )
+    
+    def handle_hold(self):
+        """Handle Hold action - put sample on hold for further review."""
+        if self.source_type == "Melting" and self.melting_batch:
+            # For melting batch, we don't change batch status, just note the hold
+            # This prevents transfer until resolved
+            pass
+            
+        elif self.source_type == "Casting" and self.mother_coil:
+            # Update coil to Hold status
+            frappe.db.set_value("Mother Coil", self.mother_coil, {
+                "qc_status": "Hold",
+                "coil_status": "Hold",
+                "qc_comments": self.qc_comment or "Sample placed on hold",
+                "qc_deviation_summary": self.deviation_messages,
+                "coil_qc_sample": self.name,
+                "qc_last_sample": self.name,
+                "qc_last_comment": self.qc_comment or ""
+            })
+            
+            log_coil_event(
+                coil=self.mother_coil,
+                casting_run=self.casting_run,
+                event_type="QC_RESULT_RECEIVED",
+                reference_doctype="QC Sample",
+                reference_name=self.name,
+                details=f"Hold - {self.qc_comment or 'Awaiting further review'}"
             )
     
     def generate_final_coils_for_run(self):
@@ -633,6 +686,141 @@ def check_remainder(element_code, sample_pct, spec_min):
     if spec_min is not None and sample_pct < flt(spec_min):
         return False, f"{element_code} {sample_pct:.4f}% < {spec_min:.4f}% (Remainder Min)"
     return True, ""
+
+
+# ==================== STOCK ENTRY CREATION ====================
+
+def create_stock_entry_for_coil(coil):
+    """
+    Create a Stock Entry (Material Receipt) for an approved casting coil.
+    
+    Conditions:
+    - coil.is_finalized = False (not already finalized)
+    - coil.qc_status = Approved / Within Spec
+    - coil.stock_entry is empty
+    - coil.item_code and coil.target_warehouse are set
+    
+    Args:
+        coil: Mother Coil document
+        
+    Returns:
+        str: Stock Entry name if created, None otherwise
+    """
+    # Validate conditions
+    if coil.is_finalized:
+        return None
+    
+    if coil.qc_status not in ("Approved", "Within Spec"):
+        return None
+    
+    if coil.stock_entry:
+        return None
+    
+    # Check required fields
+    if not coil.item_code:
+        frappe.msgprint(
+            _("Item Code not set on Mother Coil {0}. Please update before QC approval to create Stock Entry.").format(coil.name),
+            indicator="orange",
+            alert=True
+        )
+        return None
+    
+    if not coil.target_warehouse:
+        frappe.msgprint(
+            _("Target Warehouse not set on Mother Coil {0}. Please update before QC approval to create Stock Entry.").format(coil.name),
+            indicator="orange",
+            alert=True
+        )
+        return None
+    
+    # Get item details
+    item = frappe.get_doc("Item", coil.item_code)
+    
+    # Determine weight for stock entry
+    coil_weight = flt(coil.actual_weight_mt or coil.planned_weight_mt or 0)
+    if coil_weight <= 0:
+        frappe.msgprint(
+            _("Coil weight is zero or not set. Cannot create Stock Entry."),
+            indicator="orange",
+            alert=True
+        )
+        return None
+    
+    # Get company from casting plan or default
+    company = None
+    if coil.casting_plan:
+        company = frappe.db.get_value("PPC Casting Plan", coil.casting_plan, "company")
+    if not company:
+        company = frappe.defaults.get_defaults().get("company")
+    if not company:
+        company = frappe.db.get_single_value("Global Defaults", "default_company")
+    
+    if not company:
+        frappe.throw(_("Company not found. Please set a default company."))
+    
+    try:
+        # Find suitable stock entry type for Material Receipt
+        stock_entry_type = "Material Receipt"
+        existing_types = frappe.get_all("Stock Entry Type", filters={"name": stock_entry_type}, pluck="name")
+        if not existing_types:
+            # Try other common names
+            for alt_type in ["Manufacture", "Material Transfer for Manufacture", "Repack"]:
+                existing_types = frappe.get_all("Stock Entry Type", filters={"name": alt_type}, pluck="name")
+                if existing_types:
+                    stock_entry_type = alt_type
+                    break
+        
+        # Create Stock Entry
+        se = frappe.new_doc("Stock Entry")
+        se.stock_entry_type = stock_entry_type
+        se.purpose = stock_entry_type
+        se.company = company
+        se.posting_date = nowdate()
+        se.posting_time = now_datetime().strftime("%H:%M:%S")
+        
+        # Add custom reference fields if they exist
+        if hasattr(se, "reference_doctype"):
+            se.reference_doctype = "Mother Coil"
+        if hasattr(se, "reference_name"):
+            se.reference_name = coil.name
+        
+        # Add remarks
+        se.remarks = f"Stock Entry for approved coil {coil.coil_id or coil.temp_coil_id} from Mother Coil {coil.name}"
+        
+        # Add item row
+        se.append("items", {
+            "item_code": coil.item_code,
+            "qty": coil_weight,
+            "uom": item.stock_uom or "MT",
+            "stock_uom": item.stock_uom or "MT",
+            "conversion_factor": 1,
+            "t_warehouse": coil.target_warehouse,
+            "basic_rate": 0,  # No costing logic for now
+            "allow_zero_valuation_rate": 1
+        })
+        
+        se.insert(ignore_permissions=True)
+        se.submit()
+        
+        frappe.msgprint(
+            _("Coil approved and received into stock as {0}").format(se.name),
+            indicator="green",
+            alert=True
+        )
+        
+        return se.name
+        
+    except Exception as e:
+        frappe.log_error(
+            title="Stock Entry Creation Error",
+            message=f"Error creating Stock Entry for coil {coil.name}: {str(e)}"
+        )
+        frappe.msgprint(
+            _("Failed to create Stock Entry: {0}").format(str(e)),
+            indicator="red",
+            alert=True
+        )
+        return None
 
 
 # ==================== API FUNCTIONS ====================
